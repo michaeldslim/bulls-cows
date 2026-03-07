@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "bulls-cows",
-    "slug": "bulls-cows",
+    "name": "Bulls Cows",
+    "slug": "Bulls Cows",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -21,7 +21,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.mike008.bullscows"
     },
     "web": {
       "favicon": "./assets/favicon.png"
