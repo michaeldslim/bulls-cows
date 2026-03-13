@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useMemo, useState } from 'react';
+import { Audio } from 'expo-av';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import {
   Alert,
@@ -191,7 +192,78 @@ export default function App() {
   const [gameOverVisible, setGameOverVisible] = useState(false);
   const [lastStrikeMask, setLastStrikeMask] = useState<boolean[] | null>(null);
 
+  const winSoundRef = useRef<Audio.Sound | null>(null);
+  const loseSoundRef = useRef<Audio.Sound | null>(null);
+
   const secretPreview = useMemo(() => digitsToString(secret), [secret]);
+
+  useEffect(() => {
+    return () => {
+      if (winSoundRef.current) {
+        void winSoundRef.current.unloadAsync();
+        winSoundRef.current = null;
+      }
+
+      if (loseSoundRef.current) {
+        void loseSoundRef.current.unloadAsync();
+        loseSoundRef.current = null;
+      }
+    };
+  }, []);
+
+  async function playWinSound() {
+    try {
+      if (winSoundRef.current) {
+        await winSoundRef.current.unloadAsync();
+        winSoundRef.current = null;
+      }
+
+      const { sound } = await Audio.Sound.createAsync(
+        require('./assets/sounds/tada.mp3'),
+        { shouldPlay: true }
+      );
+      winSoundRef.current = sound;
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (!status.isLoaded) return;
+        if (status.didJustFinish) {
+          void sound.unloadAsync();
+          if (winSoundRef.current === sound) {
+            winSoundRef.current = null;
+          }
+        }
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  async function playLoseSound() {
+    try {
+      if (loseSoundRef.current) {
+        await loseSoundRef.current.unloadAsync();
+        loseSoundRef.current = null;
+      }
+
+      const { sound } = await Audio.Sound.createAsync(
+        require('./assets/sounds/out.mp3'),
+        { shouldPlay: true }
+      );
+      loseSoundRef.current = sound;
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (!status.isLoaded) return;
+        if (status.didJustFinish) {
+          void sound.unloadAsync();
+          if (loseSoundRef.current === sound) {
+            loseSoundRef.current = null;
+          }
+        }
+      });
+    } catch {
+      // ignore
+    }
+  }
 
   function resetGame() {
     setSecret(generateSecretDigits());
@@ -238,12 +310,14 @@ export default function App() {
 
     if (score.strikes === DIGIT_COUNT) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void playWinSound();
       setWinVisible(true);
       return;
     }
 
     if (attempts.length + 1 >= MAX_ATTEMPTS) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      void playLoseSound();
       setGameOverVisible(true);
     }
   }
