@@ -18,8 +18,9 @@ import {
 
 import type { IAttempt } from './types';
 import { DIGIT_COUNT, digitsToString } from './src/lib/game';
-import { type Screen, MAX_ATTEMPTS } from './src/constants/game';
+import { type Screen, TOTAL_INNINGS, OUTS_PER_INNING } from './src/constants/game';
 import { useGame } from './src/hooks/useGame';
+import { ordinal } from './src/utils/format';
 
 function Pill({ text, variant }: { text: string; variant: 'neutral' | 'good' | 'bad' }) {
   return (
@@ -175,16 +176,18 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
 
   const {
-    secret,
     secretPreview,
     currentGuess,
     attempts,
-    winVisible,
-    gameOverVisible,
+    inning,
+    inningResults,
+    outsThisInning,
+    inningEndVisible,
+    lastInningScored,
+    gameEndVisible,
     lastStrikeMask,
-    setWinVisible,
-    setGameOverVisible,
-    resetGame,
+    resetFullGame,
+    startNextInning,
     pushDigit,
     popDigit,
     submitGuess,
@@ -219,35 +222,45 @@ export default function App() {
 
       {screen === 'home' ? (
         <View style={styles.screen}>
-          <ScrollView style={styles.howtoScroll} contentContainerStyle={styles.homeScrollContent}>
-            <View style={styles.homeHero}>
-              <Text style={styles.title}>Bulls & Cows</Text>
-              <Text style={styles.subtitle}>Guess the secret 3-digit number</Text>
-              <View style={styles.ruleRow}>
-                <Pill text="3 digits" variant="neutral" />
-                <Pill text="no duplicates" variant="neutral" />
-                <Pill text="0 allowed" variant="neutral" />
-              </View>
+          <View style={styles.homeHero}>
+            <Text style={styles.title}>Bulls & Cows</Text>
+            <Text style={styles.subtitle}>Guess the secret 3-digit number</Text>
+            <View style={styles.ruleRow}>
+              <Pill text="3 digits" variant="neutral" />
+              <Pill text="no duplicates" variant="neutral" />
+              <Pill text="0 allowed" variant="neutral" />
             </View>
+          </View>
 
-            <Text style={styles.howtoTitle}>How to Play</Text>
+          <ScrollView style={styles.howtoScroll} contentContainerStyle={styles.homeScrollContent}>
+            <Text style={styles.howtoTitle}>Innings</Text>
             <View style={styles.howtoCard}>
-              <Text style={styles.howtoText}>Guess a 3-digit number with unique digits (0–9 allowed).</Text>
-              <Text style={styles.howtoText}>You have {MAX_ATTEMPTS} attempts to crack the secret.</Text>
+              <Text style={styles.howtoText}>Play {TOTAL_INNINGS} innings — just like real baseball.</Text>
+              <Text style={styles.howtoText}>Each inning has a brand new secret 3-digit number.</Text>
+              <Text style={styles.howtoText}>Crack the secret before 3 outs to score a run!</Text>
+              <Text style={styles.howtoText}>Hit 3 outs first — inning ends, no run scored.</Text>
             </View>
 
             <Text style={styles.howtoTitle}>Scoring</Text>
             <View style={styles.howtoCard}>
               <Text style={styles.howtoText}>Strike (S): correct digit in the correct position</Text>
               <Text style={styles.howtoText}>Ball (B): correct digit but wrong position</Text>
-              <Text style={styles.howtoText}>Out (O): digit not in the secret</Text>
+              <Text style={styles.howtoText}>Out (O): digit not in the secret — counts toward 3 outs</Text>
+              <Text style={styles.howtoText}>3 Strikes = crack the code = score a run!</Text>
             </View>
 
             <Text style={styles.howtoTitle}>Example</Text>
             <View style={styles.howtoCard}>
               <Text style={styles.howtoText}>Secret: 123</Text>
-              <Text style={styles.howtoText}>Guess: 134</Text>
-              <Text style={styles.howtoText}>Result: 1S 1B 1O</Text>
+              <Text style={styles.howtoText}>Guess: 134 → 1S 1B 1O  (1 out)</Text>
+              <Text style={styles.howtoText}>Guess: 120 → 2S 0B 1O  (2 outs)</Text>
+              <Text style={styles.howtoText}>Guess: 123 → 3S 0B 0O  → Run! ⚾</Text>
+            </View>
+
+            <Text style={styles.howtoTitle}>Win Condition</Text>
+            <View style={styles.howtoCard}>
+              <Text style={styles.howtoText}>Score as many runs as possible across all {TOTAL_INNINGS} innings.</Text>
+              <Text style={styles.howtoText}>Perfect game = {TOTAL_INNINGS} runs!</Text>
             </View>
           </ScrollView>
 
@@ -255,7 +268,7 @@ export default function App() {
             <PrimaryButton
               label="Start Game"
               onPress={() => {
-                resetGame();
+                resetFullGame();
                 setScreen('game');
               }}
             />
@@ -266,15 +279,15 @@ export default function App() {
       {screen === 'game' ? (
         <View style={styles.screen}>
           <ScreenHeader
-            title="Game"
+            title={`${ordinal(inning)} ▲`}
             onLeft={() => setScreen('home')}
             leftLabel="Home"
             leftStyle={styles.headerButtonBlue}
             leftTextStyle={styles.headerButtonTextOnColor}
             onRight={() => {
-              Alert.alert('Restart game?', 'This will start a new secret.', [
+              Alert.alert('Restart game?', 'This will reset all innings.', [
                 { text: 'Cancel', style: 'cancel' },
-                { text: 'Restart', style: 'destructive', onPress: resetGame },
+                { text: 'Restart', style: 'destructive', onPress: resetFullGame },
               ]);
             }}
             rightLabel="Restart"
@@ -283,26 +296,37 @@ export default function App() {
           />
 
           <View style={styles.gameTop}>
-            <View style={styles.ruleRow}>
-              <Pill text="3 digits" variant="neutral" />
-              <Pill text="unique" variant="neutral" />
-              <Pill text="0 allowed" variant="neutral" />
+            <View style={styles.inningBar}>
+              <View style={styles.outDotsRow}>
+                <Text style={styles.outLabel}>Outs</Text>
+                <View style={styles.outDots}>
+                  {Array.from({ length: OUTS_PER_INNING }, (_, i) => (
+                    <View key={i} style={[styles.outDot, i < outsThisInning ? styles.outDotFilled : undefined]} />
+                  ))}
+                </View>
+              </View>
+              <View style={styles.inningScoreRow}>
+                {inningResults.map((r) => (
+                  <Text
+                    key={r.inning}
+                    style={[styles.inningScoreMark, r.scored ? styles.inningScoreMarkRun : styles.inningScoreMarkOut]}
+                  >
+                    {r.scored ? '⚾' : '✕'}
+                  </Text>
+                ))}
+              </View>
             </View>
-
-            <Text style={styles.attemptCounter}>
-              Attempt {Math.min(attempts.length + 1, MAX_ATTEMPTS)} / {MAX_ATTEMPTS}
-            </Text>
 
             <View style={styles.guessBoxes}>
               {Array.from({ length: DIGIT_COUNT }, (_, i) => {
                 const val = currentGuess[i];
                 const activeIndex = currentGuess.length;
                 const showStrikes =
-                  !winVisible && !gameOverVisible && currentGuess.length === 0 && lastStrikeMask !== null;
+                  !inningEndVisible && !gameEndVisible && currentGuess.length === 0 && lastStrikeMask !== null;
                 const isStrike = showStrikes ? Boolean(lastStrikeMask?.[i]) : false;
                 const isActive =
-                  !winVisible &&
-                  !gameOverVisible &&
+                  !inningEndVisible &&
+                  !gameEndVisible &&
                   !showStrikes &&
                   activeIndex < DIGIT_COUNT &&
                   i === activeIndex;
@@ -345,67 +369,55 @@ export default function App() {
             ))}
           </View>
 
-          <Modal visible={winVisible} transparent animationType="fade" onRequestClose={() => setWinVisible(false)}>
+          <Modal visible={inningEndVisible} transparent animationType="fade" onRequestClose={() => {}}>
             <View style={styles.modalBackdrop}>
               <View style={styles.modalCard}>
-                <Text style={styles.modalTitle}>3 Strikes!</Text>
-                <Text style={styles.modalText}>You got it in {attempts.length} tries.</Text>
+                <Text style={styles.modalTitle}>
+                  {lastInningScored ? '⚾ Run Scored!' : '3 Outs — Inning Over'}
+                </Text>
+                {lastInningScored ? (
+                  <Text style={styles.modalText}>
+                    You got it in {attempts.length} {attempts.length === 1 ? 'try' : 'tries'}!
+                  </Text>
+                ) : (
+                  <Text style={styles.modalText}>Secret was: {secretPreview}</Text>
+                )}
+                <Text style={styles.modalText}>{ordinal(inning + 1)} inning up next</Text>
+                <PrimaryButton label="Next Inning →" onPress={startNextInning} />
+              </View>
+            </View>
+          </Modal>
+
+          <Modal visible={gameEndVisible} transparent animationType="fade" onRequestClose={() => {}}>
+            <View style={styles.modalBackdrop}>
+              <View style={styles.modalCard}>
+                <Text style={styles.modalTitle}>Full Game Done!</Text>
+                <View style={styles.scoreboardRows}>
+                  {inningResults.map((r) => (
+                    <View key={r.inning} style={styles.scoreboardRow}>
+                      <Text style={styles.scoreboardInning}>{ordinal(r.inning)} Inning</Text>
+                      <Text style={[styles.scoreboardResult, r.scored ? styles.scoreboardRun : styles.scoreboardOut]}>
+                        {r.scored ? '⚾ Run' : '✕ No Run'}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+                <Text style={styles.scoreTotal}>
+                  {inningResults.filter((r) => r.scored).length} / {TOTAL_INNINGS} runs scored
+                </Text>
                 <View style={styles.modalButtons}>
                   <SecondaryButton
-                    label="Back to Home"
+                    label="Home"
                     style={styles.modalButton}
                     onPress={() => {
-                      setWinVisible(false);
+                      resetFullGame();
                       setScreen('home');
                     }}
                   />
                   <PrimaryButton
                     label="Play Again"
                     style={styles.modalButton}
-                    onPress={() => {
-                      resetGame();
-                      setWinVisible(false);
-                    }}
-                  />
-                </View>
-
-                <Pressable
-                  onLongPress={() => Alert.alert('Secret', secretPreview)}
-                  style={styles.secretHintArea}
-                >
-                  <Text style={styles.secretHintText}>Tip: Long-press here to reveal secret</Text>
-                </Pressable>
-              </View>
-            </View>
-          </Modal>
-
-          <Modal
-            visible={gameOverVisible}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setGameOverVisible(false)}
-          >
-            <View style={styles.modalBackdrop}>
-              <View style={styles.modalCard}>
-                <Text style={styles.modalTitle}>Game Over</Text>
-                <Text style={styles.modalText}>You used all {MAX_ATTEMPTS} tries.</Text>
-                <Text style={styles.modalText}>Secret: {secretPreview}</Text>
-                <View style={styles.modalButtons}>
-                  <SecondaryButton
-                    label="Back to Home"
-                    style={styles.modalButton}
-                    onPress={() => {
-                      setGameOverVisible(false);
-                      setScreen('home');
-                    }}
-                  />
-                  <PrimaryButton
-                    label="Try Again"
-                    style={styles.modalButton}
-                    onPress={() => {
-                      resetGame();
-                      setGameOverVisible(false);
-                    }}
+                    onPress={resetFullGame}
                   />
                 </View>
               </View>
@@ -436,9 +448,12 @@ const styles = StyleSheet.create({
   },
   homeHero: {
     alignItems: 'center',
-    paddingTop: 24,
+    paddingTop: 16,
     paddingBottom: 16,
     gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    marginBottom: 4,
   },
   howtoScroll: {
     flex: 1,
@@ -750,5 +765,87 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     fontWeight: '700',
     fontSize: 12,
+  },
+  inningBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  outDotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  outLabel: {
+    fontWeight: '800',
+    color: '#6B7280',
+    fontSize: 13,
+  },
+  outDots: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  outDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    backgroundColor: 'transparent',
+  },
+  outDotFilled: {
+    backgroundColor: '#EF4444',
+    borderColor: '#EF4444',
+  },
+  inningScoreRow: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  inningScoreMark: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  inningScoreMarkRun: {
+    color: '#16A34A',
+  },
+  inningScoreMarkOut: {
+    color: '#9CA3AF',
+  },
+  scoreboardRows: {
+    gap: 8,
+    paddingVertical: 4,
+  },
+  scoreboardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  scoreboardInning: {
+    fontWeight: '800',
+    color: '#111827',
+    fontSize: 15,
+  },
+  scoreboardResult: {
+    fontWeight: '800',
+    fontSize: 15,
+  },
+  scoreboardRun: {
+    color: '#16A34A',
+  },
+  scoreboardOut: {
+    color: '#9CA3AF',
+  },
+  scoreTotal: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#111827',
+    textAlign: 'center',
+    paddingTop: 4,
   },
 });
