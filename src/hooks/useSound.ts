@@ -4,7 +4,7 @@ import { Audio } from 'expo-av';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const SOUND_WIN = require('../../assets/sounds/tada.mp3');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const SOUND_LOSE = require('../../assets/sounds/out.mp3');
+const SOUND_LOSE = require('../../assets/sounds/inning-over.mp3');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const SOUNDS_STRIKES: Record<number, unknown> = {
   1: require('../../assets/sounds/one-strike.mp3'),
