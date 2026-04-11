@@ -9,3 +9,9 @@ export interface IAttempt {
   guess: number[];
   score: IScore;
 }
+
+export interface IInningResult {
+  inning: number;
+  scored: boolean;
+  attempts: IAttempt[];
+}
