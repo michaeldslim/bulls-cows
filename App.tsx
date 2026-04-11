@@ -305,15 +305,30 @@ export default function App() {
                   ))}
                 </View>
               </View>
-              <View style={styles.inningScoreRow}>
-                {inningResults.map((r) => (
-                  <Text
-                    key={r.inning}
-                    style={[styles.inningScoreMark, r.scored ? styles.inningScoreMarkRun : styles.inningScoreMarkOut]}
-                  >
-                    {r.scored ? '⚾' : '✕'}
-                  </Text>
-                ))}
+              <View style={styles.inningScoreboard}>
+                <View style={styles.inningGridRow}>
+                  {Array.from({ length: TOTAL_INNINGS }, (_, i) => (
+                    <React.Fragment key={i}>
+                      <Text style={[styles.inningGridNum, inning === i + 1 ? styles.inningGridNumActive : undefined]}>
+                        {i + 1}
+                      </Text>
+                      {i < TOTAL_INNINGS - 1 ? <Text style={styles.inningGridSep}>|</Text> : null}
+                    </React.Fragment>
+                  ))}
+                </View>
+                <View style={styles.inningGridRow}>
+                  {Array.from({ length: TOTAL_INNINGS }, (_, i) => {
+                    const result = inningResults.find((r) => r.inning === i + 1);
+                    return (
+                      <React.Fragment key={i}>
+                        <Text style={[styles.inningGridMark, result ? (result.scored ? styles.inningScoreMarkRun : styles.inningScoreMarkOut) : undefined]}>
+                          {result ? (result.scored ? '⚾' : '✕') : ' '}
+                        </Text>
+                        {i < TOTAL_INNINGS - 1 ? <Text style={styles.inningGridSep}>|</Text> : null}
+                      </React.Fragment>
+                    );
+                  })}
+                </View>
               </View>
             </View>
 
@@ -767,10 +782,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   inningBar: {
+    flexDirection: 'column',
+    gap: 6,
+    paddingVertical: 6,
+  },
+  inningScoreboard: {
+    gap: 2,
+  },
+  inningGridRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
+  },
+  inningGridNum: {
+    width: 26,
+    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#9CA3AF',
+  },
+  inningGridNumActive: {
+    color: '#1D4ED8',
+    fontWeight: '900',
+  },
+  inningGridSep: {
+    width: 8,
+    textAlign: 'center',
+    color: '#D1D5DB',
+    fontSize: 11,
+  },
+  inningGridMark: {
+    width: 26,
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '800',
   },
   outDotsRow: {
     flexDirection: 'row',

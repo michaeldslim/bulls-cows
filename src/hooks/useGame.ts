@@ -25,7 +25,7 @@ export function useGame() {
   const [gameEndVisible, setGameEndVisible] = useState(false);
   const [lastStrikeMask, setLastStrikeMask] = useState<boolean[] | null>(null);
 
-  const { playWinSound, playLoseSound } = useSound();
+  const { playWinSound, playLoseSound, playCallSequence } = useSound();
 
   const secretPreview = useMemo(() => digitsToString(secret), [secret]);
 
@@ -89,7 +89,12 @@ export function useGame() {
     setAttempts(newAttempts);
     setCurrentGuess([]);
 
+    const newOuts = outsThisInning + score.outs;
+    const inningOver = newOuts >= OUTS_PER_INNING;
+
     if (score.strikes === DIGIT_COUNT) {
+      // Run scored — play calls immediately, show modal without waiting
+      void playCallSequence(score.strikes, score.balls, score.outs);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       void playWinSound();
       setLastInningScored(true);
@@ -103,19 +108,25 @@ export function useGame() {
       return;
     }
 
-    const newOuts = outsThisInning + score.outs;
-    if (newOuts >= OUTS_PER_INNING) {
+    if (inningOver) {
+      // 3 outs — wait for call sequence to finish before showing modal
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      void playLoseSound();
       setLastInningScored(false);
       const result: IInningResult = { inning, scored: false, attempts: newAttempts };
       setInningResults((prev) => [...prev, result]);
-      if (inning >= TOTAL_INNINGS) {
-        setGameEndVisible(true);
-      } else {
-        setInningEndVisible(true);
-      }
+      playCallSequence(score.strikes, score.balls, score.outs).then(() => {
+        void playLoseSound();
+        if (inning >= TOTAL_INNINGS) {
+          setGameEndVisible(true);
+        } else {
+          setInningEndVisible(true);
+        }
+      });
+      return;
     }
+
+    // Regular guess — play calls and continue
+    void playCallSequence(score.strikes, score.balls, score.outs);
   }
 
   return {
