@@ -28,7 +28,7 @@ import {
   scoreGuess,
 } from './src/lib/game';
 
-type Screen = 'home' | 'howto' | 'game';
+type Screen = 'home' | 'game';
 
 const MAX_ATTEMPTS = 10 as const;
 
@@ -351,44 +351,26 @@ export default function App() {
 
       {screen === 'home' ? (
         <View style={styles.screen}>
-          <View style={styles.hero}>
-            <Text style={styles.title}>Bulls & Cows</Text>
-            <Text style={styles.subtitle}>3 digits. Unique. 0 allowed.</Text>
-            <View style={styles.ruleRow}>
-              <Pill text="3 digits" variant="neutral" />
-              <Pill text="no duplicates" variant="neutral" />
-              <Pill text="0 allowed" variant="neutral" />
+          <ScrollView style={styles.howtoScroll} contentContainerStyle={styles.homeScrollContent}>
+            <View style={styles.homeHero}>
+              <Text style={styles.title}>Bulls & Cows</Text>
+              <Text style={styles.subtitle}>Guess the secret 3-digit number</Text>
+              <View style={styles.ruleRow}>
+                <Pill text="3 digits" variant="neutral" />
+                <Pill text="no duplicates" variant="neutral" />
+                <Pill text="0 allowed" variant="neutral" />
+              </View>
             </View>
-          </View>
 
-          <View style={styles.homeButtons}>
-            <PrimaryButton
-              label="Start Game"
-              onPress={() => {
-                resetGame();
-                setScreen('game');
-              }}
-            />
-            <SecondaryButton label="How to Play" onPress={() => setScreen('howto')} />
-          </View>
-        </View>
-      ) : null}
+            <Text style={styles.howtoTitle}>How to Play</Text>
+            <View style={styles.howtoCard}>
+              <Text style={styles.howtoText}>Guess a 3-digit number with unique digits (0–9 allowed).</Text>
+              <Text style={styles.howtoText}>You have {MAX_ATTEMPTS} attempts to crack the secret.</Text>
+            </View>
 
-      {screen === 'howto' ? (
-        <View style={styles.screen}>
-          <ScreenHeader
-            title="How to Play"
-            onLeft={() => setScreen('home')}
-            leftLabel="Back"
-            leftStyle={[styles.headerButtonGreen, styles.headerButtonNarrow]}
-            leftTextStyle={styles.headerButtonTextOnColor}
-          />
-          <ScrollView contentContainerStyle={styles.howtoContent}>
             <Text style={styles.howtoTitle}>Scoring</Text>
             <View style={styles.howtoCard}>
-              <Text style={styles.howtoText}>
-                Strike (S): correct digit in the correct position{''}
-              </Text>
+              <Text style={styles.howtoText}>Strike (S): correct digit in the correct position</Text>
               <Text style={styles.howtoText}>Ball (B): correct digit but wrong position</Text>
               <Text style={styles.howtoText}>Out (O): digit not in the secret</Text>
             </View>
@@ -399,17 +381,17 @@ export default function App() {
               <Text style={styles.howtoText}>Guess: 134</Text>
               <Text style={styles.howtoText}>Result: 1S 1B 1O</Text>
             </View>
-
-            <View style={styles.homeButtons}>
-              <PrimaryButton
-                label="Start Game"
-                onPress={() => {
-                  resetGame();
-                  setScreen('game');
-                }}
-              />
-            </View>
           </ScrollView>
+
+          <View style={styles.homeButtons}>
+            <PrimaryButton
+              label="Start Game"
+              onPress={() => {
+                resetGame();
+                setScreen('game');
+              }}
+            />
+          </View>
         </View>
       ) : null}
 
@@ -583,6 +565,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
+  },
+  homeHero: {
+    alignItems: 'center',
+    paddingTop: 24,
+    paddingBottom: 16,
+    gap: 10,
+  },
+  howtoScroll: {
+    flex: 1,
+  },
+  homeScrollContent: {
+    paddingTop: 10,
+    gap: 12,
+    paddingBottom: 8,
   },
   title: {
     fontSize: 34,
