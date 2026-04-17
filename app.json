@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Bulls Cows",
-    "slug": "Bulls Cows",
+    "slug": "bullscows",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -26,6 +26,16 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/573933e0-4427-4ae8-b253-8e6813531142"
+    },
+    "runtimeVersion": "1.0.0",
+    "extra": {
+      "eas": {
+        "projectId": "573933e0-4427-4ae8-b253-8e6813531142"
+      }
+    },
+    "owner": "mike008"
   }
 }
