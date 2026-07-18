@@ -251,7 +251,7 @@ eas build --platform all --profile production
 eas update --channel production --message "Describe your change"
 ```
 
-OTA updates apply only when the device's `runtimeVersion` matches `app.json` (`2.2.1`). Bump `runtimeVersion` and ship a new binary when native code changes.
+OTA updates apply only when the device's `runtimeVersion` matches `app.json`. Bump `runtimeVersion` and ship a new binary when native code changes.
 
 | Profile | Channel | Purpose |
 |---------|---------|---------|
