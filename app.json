@@ -2,7 +2,7 @@
   "expo": {
     "name": "Bulls Cows",
     "slug": "bullscows",
-    "version": "2.1.0",
+    "version": "2.2.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -30,7 +30,7 @@
     "updates": {
       "url": "https://u.expo.dev/573933e0-4427-4ae8-b253-8e6813531142"
     },
-    "runtimeVersion": "2.1.0",
+    "runtimeVersion": "2.2.1",
     "extra": {
       "eas": {
         "projectId": "573933e0-4427-4ae8-b253-8e6813531142"
