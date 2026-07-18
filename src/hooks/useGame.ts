@@ -1,20 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, LayoutAnimation, Platform, UIManager } from 'react-native';
 
-import type { GameMode, IHintReveal, IInningResult, ISettings } from '../../types';
-import {
-  DEFAULT_DIGIT_COUNT,
-  DEFAULT_TOTAL_INNINGS,
-  HINT_AFTER_ATTEMPTS,
-  MAX_HINTS_PER_INNING,
-} from '../constants/game';
+import type { IHintReveal, IInningResult, ISettings } from '../../types';
+import { HINT_AFTER_ATTEMPTS, MAX_HINTS_PER_INNING } from '../constants/game';
 import i18n from '../i18n';
 import {
   computeHintReveal,
   digitsToString,
-  generateDailySecret,
   generateSecretDigits,
-  getDailyDateKey,
   isValidGuessDigits,
   makeId,
 } from '../lib/game';
@@ -43,7 +36,6 @@ function announceHint(position: number, digit: number) {
 }
 
 export function useGame(settings: ISettings, options?: UseGameOptions) {
-  const [gameMode, setGameMode] = useState<GameMode>('classic');
   const [secret, setSecret] = useState<number[]>(() => generateSecretDigits(settings.digitCount));
   const [currentGuess, setCurrentGuess] = useState<number[]>([]);
   const [attempts, setAttempts] = useState<IInningResult['attempts']>([]);
@@ -59,9 +51,8 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
   const [hintReveals, setHintReveals] = useState<IHintReveal[]>([]);
   const [hintsUsedThisInning, setHintsUsedThisInning] = useState(0);
 
-  const digitCount = gameMode === 'daily' ? DEFAULT_DIGIT_COUNT : settings.digitCount;
-  const totalInnings = gameMode === 'daily' ? DEFAULT_TOTAL_INNINGS : settings.totalInnings;
-  const dailyDateKey = useMemo(() => getDailyDateKey(), []);
+  const digitCount = settings.digitCount;
+  const totalInnings = settings.totalInnings;
 
   const { playWinSound, playLoseSound, playCallSequence } = useSound(settings.soundEnabled);
   const onGameCompleteRef = useRef(options?.onGameComplete);
@@ -76,10 +67,7 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
     currentGuess.length === 0 &&
     attempts.length > 0;
 
-  function createSecret(inningNumber: number, mode: GameMode) {
-    if (mode === 'daily') {
-      return generateDailySecret(dailyDateKey, inningNumber, DEFAULT_DIGIT_COUNT);
-    }
+  function createSecret() {
     return generateSecretDigits(settings.digitCount);
   }
 
@@ -131,9 +119,8 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
     announceHint(hint.position, hint.digit);
   }
 
-  function resetFullGame(mode: GameMode = 'classic') {
-    setGameMode(mode);
-    setSecret(createSecret(1, mode));
+  function resetFullGame() {
+    setSecret(createSecret());
     setCurrentGuess([]);
     setAttempts([]);
     setInning(1);
@@ -151,7 +138,7 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
 
   function startNextInning() {
     const nextInning = inning + 1;
-    setSecret(createSecret(nextInning, gameMode));
+    setSecret(createSecret());
     setCurrentGuess([]);
     setAttempts([]);
     setLastStrikeMask(null);
@@ -268,10 +255,8 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
   }
 
   return {
-    gameMode,
     digitCount,
     totalInnings,
-    dailyDateKey,
     secretPreview,
     currentGuess,
     attempts,

@@ -23,8 +23,6 @@ export const en = {
   },
   home: {
     startGame: 'Start Game',
-    dailyChallenge: 'Daily Challenge',
-    dailySubtitle: "Today's puzzle — same for everyone",
     yourStats: 'Your Stats',
     bestRuns: 'Best runs: {{runs}} / {{total}}',
     perfectGames: 'Perfect games: {{count}}',
@@ -74,7 +72,6 @@ export const en = {
     noAttempts: 'No attempts yet.',
     del: 'Del',
     enter: 'Enter',
-    dailyBadge: 'Daily {{date}}',
     howToPlay: 'How to play',
     howToPlayGuess: 'Enter a unique {{count}}-digit guess. No duplicates.',
     howToPlayZero: '0 is allowed — guesses can start with 0 (e.g. 012).',

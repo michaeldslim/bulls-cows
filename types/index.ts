@@ -16,7 +16,6 @@ export interface IAttempt {
 export type AppLanguage = 'en' | 'ko';
 export type DigitCount = 3 | 4;
 export type GameInnings = 6 | 9;
-export type GameMode = 'classic' | 'daily';
 
 export interface ISettings {
   soundEnabled: boolean;

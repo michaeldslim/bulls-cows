@@ -4,26 +4,6 @@ import { DEFAULT_DIGIT_COUNT } from '../constants/game';
 /** @deprecated Use game config digitCount instead */
 export const DIGIT_COUNT = DEFAULT_DIGIT_COUNT;
 
-function hashSeed(seed: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i += 1) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
-function mulberry32(seed: number): () => number {
-  let state = seed;
-  return () => {
-    state |= 0;
-    state = (state + 0x6d2b79f5) | 0;
-    let t = Math.imul(state ^ (state >>> 15), 1 | state);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 function shuffleWithRng(pool: number[], count: number, rng: () => number): number[] {
   const copy = [...pool];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -36,24 +16,6 @@ function shuffleWithRng(pool: number[], count: number, rng: () => number): numbe
 export function generateSecretDigits(digitCount: number = DEFAULT_DIGIT_COUNT): number[] {
   const pool = Array.from({ length: 10 }, (_, i) => i);
   return shuffleWithRng(pool, digitCount, Math.random);
-}
-
-export function generateDailySecret(
-  dateKey: string,
-  inning: number,
-  digitCount: number = DEFAULT_DIGIT_COUNT,
-): number[] {
-  const seed = hashSeed(`${dateKey}:${inning}:${digitCount}`);
-  const rng = mulberry32(seed);
-  const pool = Array.from({ length: 10 }, (_, i) => i);
-  return shuffleWithRng(pool, digitCount, rng);
-}
-
-export function getDailyDateKey(date = new Date()): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
 
 export function isValidGuessDigits(digits: number[], digitCount: number = DEFAULT_DIGIT_COUNT): boolean {

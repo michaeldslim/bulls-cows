@@ -25,8 +25,6 @@ export const ko: TranslationSchema = {
   },
   home: {
     startGame: '게임 시작',
-    dailyChallenge: '오늘의 챌린지',
-    dailySubtitle: '오늘의 퍼즐 — 모두 같은 정답',
     yourStats: '내 기록',
     bestRuns: '최고 득점: {{runs}} / {{total}}',
     perfectGames: '퍼펙트 게임: {{count}}회',
@@ -76,7 +74,6 @@ export const ko: TranslationSchema = {
     noAttempts: '아직 시도가 없습니다.',
     del: '삭제',
     enter: '확인',
-    dailyBadge: '오늘 {{date}}',
     howToPlay: '게임 방법',
     howToPlayGuess: '중복 없는 {{count}}자리 숫자를 입력하세요.',
     howToPlayZero: '0으로 시작할 수 있습니다 (예: 012).',

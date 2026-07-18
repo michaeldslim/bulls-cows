@@ -4,7 +4,6 @@ import { Platform, SafeAreaView, StatusBar as RNStatusBar, StyleSheet } from 're
 
 import './src/i18n';
 import { type Screen } from './src/constants/game';
-import type { GameMode } from './types';
 import { useGame } from './src/hooks/useGame';
 import { useSettings } from './src/hooks/useSettings';
 import { useStats } from './src/hooks/useStats';
@@ -29,8 +28,8 @@ function AppContent() {
     },
   });
 
-  function startGame(mode: GameMode) {
-    game.resetFullGame(mode);
+  function startGame() {
+    game.resetFullGame();
     setIsNewBest(false);
     setScreen('game');
   }
@@ -45,8 +44,7 @@ function AppContent() {
           averageAttempts={averageAttempts}
           settings={settings}
           onOpenSettings={() => setScreen('settings')}
-          onStartGame={() => startGame('classic')}
-          onStartDaily={() => startGame('daily')}
+          onStartGame={startGame}
         />
       ) : screen === 'settings' ? (
         <SettingsScreen

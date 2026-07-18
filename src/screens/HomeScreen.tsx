@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 
 import type { ISettings, IStats } from '../../types';
 import { PrimaryButton } from '../components/PrimaryButton';
-import { SecondaryButton } from '../components/SecondaryButton';
 import { DEFAULT_TOTAL_INNINGS, MAX_CONTENT_WIDTH } from '../constants/game';
 import { radius, spacing } from '../theme';
 import { useTheme } from '../theme/ThemeContext';
@@ -15,14 +14,12 @@ export function HomeScreen({
   settings,
   onOpenSettings,
   onStartGame,
-  onStartDaily,
 }: {
   stats: IStats;
   averageAttempts: number | null;
   settings: ISettings;
   onOpenSettings: () => void;
   onStartGame: () => void;
-  onStartDaily: () => void;
 }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -111,8 +108,6 @@ export function HomeScreen({
 
       <View style={styles.buttons}>
         <PrimaryButton label={t('home.startGame')} onPress={onStartGame} />
-        <SecondaryButton label={t('home.dailyChallenge')} onPress={onStartDaily} />
-        <Text style={styles.dailyHint}>{t('home.dailySubtitle')}</Text>
       </View>
     </View>
   );
@@ -188,12 +183,6 @@ function createStyles(colors: ReturnType<typeof useTheme>['colors']) {
     buttons: {
       gap: spacing.md,
       paddingBottom: 34,
-    },
-    dailyHint: {
-      textAlign: 'center',
-      color: colors.textMuted,
-      fontSize: 13,
-      fontWeight: '600',
     },
   });
 }

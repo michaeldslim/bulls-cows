@@ -2,7 +2,6 @@ export type Screen = 'home' | 'game' | 'settings';
 
 export type DigitCount = 3 | 4;
 export type GameInnings = 6 | 9;
-export type GameMode = 'classic' | 'daily';
 
 export const DEFAULT_DIGIT_COUNT: DigitCount = 3;
 export const DEFAULT_TOTAL_INNINGS: GameInnings = 9;

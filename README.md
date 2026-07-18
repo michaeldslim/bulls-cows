@@ -11,7 +11,7 @@ Guess unique-digit secrets across multiple innings. Score a run when you crack t
 
 Each inning presents a new secret number made of unique digits (0–9). Enter guesses on a numeric keypad; each submission is scored as strikes, balls, and outs. Land every digit in the correct position (a full strike count) to score a run. Rack up outs with wrong digits — three outs ends the inning with no run.
 
-The app wraps this core loop in a baseball metaphor: innings, runs, outs, and a live scoreboard. Sound effects call out results like a ballpark announcer. Stats, daily challenges, hints, dark mode, and Korean/English localization are built in.
+The app wraps this core loop in a baseball metaphor: innings, runs, outs, and a live scoreboard. Sound effects call out results like a ballpark announcer. Stats, hints, dark mode, and Korean/English localization are built in.
 
 ---
 
@@ -55,18 +55,6 @@ Score as many runs as possible across all innings. A **perfect game** means a ru
 ### Hints
 
 After **3 unsuccessful attempts** in an inning (no run scored yet), **one digit position** is revealed. Limited to **1 hint per inning**. Revealed digits appear in the guess boxes with a dashed border.
-
----
-
-## Game Modes
-
-### Classic
-
-Uses your Settings preferences for digit count (3 or 4) and innings (6 or 9). Each secret is randomly generated.
-
-### Daily Challenge
-
-From the home screen, tap **Daily Challenge** (오늘의 챌린지). Uses a **date-seeded** secret so every player gets the same puzzle for that day. Each inning's secret is derived from the date + inning number. Daily mode always uses **3 digits** and **9 innings**.
 
 ---
 
@@ -114,7 +102,7 @@ From the home screen, tap **Daily Challenge** (오늘의 챌린지). Uses a **da
 
 | Screen | Description |
 |--------|-------------|
-| **Home** | Rules summary, stats, Start Game / Daily Challenge buttons |
+| **Home** | Rules summary, stats, Start Game button |
 | **Game** | Scoreboard, guess boxes, attempt history, keypad, inning/game modals |
 | **Settings** | Language, difficulty, sound, haptics |
 
@@ -143,7 +131,7 @@ index.ts                   # Expo entry
 src/
   constants/game.ts        # Innings, digits, hints, layout constants
   lib/
-    game.ts                # Secret generation, validation, scoring, hints, daily seed
+    game.ts                # Secret generation, validation, scoring, hints
     inning.ts              # Pure inning reducer (submit / undo)
     stats.ts               # Stats aggregation
     haptics.ts             # Cross-platform haptic helpers
@@ -209,7 +197,7 @@ npm test          # run once
 npm run test:watch
 ```
 
-Covers `scoreGuess`, validation, secret generation, daily seed determinism, hint logic, inning reducer, and stats.
+Covers `scoreGuess`, validation, secret generation, hint logic, inning reducer, and stats.
 
 ---
 

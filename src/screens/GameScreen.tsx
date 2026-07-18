@@ -8,7 +8,6 @@ import { GuessBoxes } from '../components/GuessBoxes';
 import { InningEndModal } from '../components/InningEndModal';
 import { InningScoreboard } from '../components/InningScoreboard';
 import { Keypad } from '../components/Keypad';
-import { Pill } from '../components/Pill';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { HINT_AFTER_ATTEMPTS as HINT_THRESHOLD, MAX_CONTENT_WIDTH, TABLET_BREAKPOINT } from '../constants/game';
 import { useOnboarding } from '../hooks/useOnboarding';
@@ -37,10 +36,8 @@ export function GameScreen({
   const language = i18n.language === 'ko' ? 'ko' : 'en';
 
   const {
-    gameMode,
     digitCount,
     totalInnings,
-    dailyDateKey,
     secretPreview,
     currentGuess,
     attempts,
@@ -136,19 +133,13 @@ export function GameScreen({
         onRight={() => {
           Alert.alert(t('game.restartTitle'), t('game.restartMessage'), [
             { text: t('common.cancel'), style: 'cancel' },
-            { text: t('game.restart'), style: 'destructive', onPress: () => resetFullGame(gameMode) },
+            { text: t('game.restart'), style: 'destructive', onPress: () => resetFullGame() },
           ]);
         }}
         rightLabel={t('game.restart')}
         rightStyle={styles.headerGreen}
         rightTextStyle={styles.headerTextOnColor}
       />
-
-      {gameMode === 'daily' ? (
-        <View style={styles.dailyBadgeRow}>
-          <Pill text={t('game.dailyBadge', { date: dailyDateKey })} variant="good" />
-        </View>
-      ) : null}
 
       <Pressable onPress={toggleHowToPlay} style={styles.howToPlayToggle}>
         <Text style={styles.howToPlayTitle}>
@@ -241,10 +232,10 @@ export function GameScreen({
         isPerfectGame={isPerfectGame}
         isNewBest={isNewBest}
         onHome={() => {
-          resetFullGame(gameMode);
+          resetFullGame();
           onHome();
         }}
-        onPlayAgain={() => resetFullGame(gameMode)}
+        onPlayAgain={() => resetFullGame()}
       />
     </View>
   );
@@ -270,10 +261,6 @@ function createStyles(colors: ReturnType<typeof useTheme>['colors']) {
     },
     headerTextOnColor: {
       color: colors.onPrimary,
-    },
-    dailyBadgeRow: {
-      alignItems: 'center',
-      paddingBottom: spacing.xs,
     },
     howToPlayToggle: {
       paddingVertical: spacing.xs,

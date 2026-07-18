@@ -3,9 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   classifyGuessDigits,
   computeHintReveal,
-  generateDailySecret,
   generateSecretDigits,
-  getDailyDateKey,
   isValidGuessDigits,
   scoreGuess,
 } from './game';
@@ -38,26 +36,6 @@ describe('generateSecretDigits', () => {
     const secret = generateSecretDigits(4);
     expect(secret).toHaveLength(4);
     expect(new Set(secret).size).toBe(4);
-  });
-});
-
-describe('generateDailySecret', () => {
-  it('is deterministic for the same date and inning', () => {
-    const a = generateDailySecret('2026-07-18', 1, 3);
-    const b = generateDailySecret('2026-07-18', 1, 3);
-    expect(a).toEqual(b);
-  });
-
-  it('differs across innings', () => {
-    const a = generateDailySecret('2026-07-18', 1, 3);
-    const b = generateDailySecret('2026-07-18', 2, 3);
-    expect(a).not.toEqual(b);
-  });
-});
-
-describe('getDailyDateKey', () => {
-  it('formats as YYYY-MM-DD', () => {
-    expect(getDailyDateKey(new Date('2026-07-18T12:00:00'))).toBe('2026-07-18');
   });
 });
 

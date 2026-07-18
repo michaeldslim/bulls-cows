@@ -67,7 +67,6 @@ Use this plan when adding features or refactoring. Prioritize small, shippable s
 ### Logic
 
 - [x] **Configurable difficulty** — optional 4-digit mode or fewer innings (constants in `src/constants/game.ts`).
-- [x] **Daily challenge** — seeded secret from date string so all players share the same puzzle.
 - [x] **Hint system** — after N failed attempts in an inning, reveal one digit position (limit hints per inning).
 
 ### UI
@@ -112,4 +111,4 @@ Use this plan when adding features or refactoring. Prioritize small, shippable s
 
 ## Suggested Next Task
 
-Phase 3 is complete. Consider polish follow-ups: stats segmented by difficulty, daily challenge leaderboard/share, or haptic patterns per S/B/O call.
+Phase 3 is complete. Consider polish follow-ups: stats segmented by difficulty, share results, or haptic patterns per S/B/O call.
