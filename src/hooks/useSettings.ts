@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { ISettings } from '../../types';
+import { DEFAULT_DIGIT_COUNT, DEFAULT_TOTAL_INNINGS } from '../constants/game';
 import i18n from '../i18n';
 
 const SETTINGS_KEY = 'bulls-cows-settings';
@@ -10,6 +11,8 @@ const DEFAULT_SETTINGS: ISettings = {
   soundEnabled: true,
   hapticsEnabled: true,
   language: 'ko',
+  digitCount: DEFAULT_DIGIT_COUNT,
+  totalInnings: DEFAULT_TOTAL_INNINGS,
 };
 
 export function useSettings() {

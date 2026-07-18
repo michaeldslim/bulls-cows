@@ -48,6 +48,33 @@ async function playOnce(
   }
 }
 
+const CALL_PLAYBACK_RATE = 2.25;
+const MAX_CLIP_MS = 380;
+
+async function playClip(sound: Audio.Sound): Promise<void> {
+  await sound.setRateAsync(CALL_PLAYBACK_RATE, true);
+
+  return new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      void sound.unloadAsync();
+      resolve();
+    };
+
+    const timer = setTimeout(finish, MAX_CLIP_MS);
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (!status.isLoaded) return;
+      if (status.didJustFinish) {
+        clearTimeout(timer);
+        finish();
+      }
+    });
+    void sound.playAsync();
+  });
+}
+
 export function useSound(enabled: boolean) {
   const winSoundRef = useRef<Audio.Sound | null>(null);
   const loseSoundRef = useRef<Audio.Sound | null>(null);
@@ -89,17 +116,7 @@ export function useSound(enabled: boolean) {
 
     for (const sound of sounds) {
       if (!sound) continue;
-      await new Promise<void>((resolve) => {
-        void sound.setRateAsync(1.5, true);
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (!status.isLoaded) return;
-          if (status.didJustFinish) {
-            void sound.unloadAsync();
-            resolve();
-          }
-        });
-        void sound.playAsync();
-      });
+      await playClip(sound);
     }
   }
 

@@ -1,8 +1,9 @@
+import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { DIGIT_COUNT } from '../lib/game';
-import { spacing } from '../theme';
+import { radius, spacing } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 import { KeyButton } from './KeyButton';
 
 type KeyConfig = {
@@ -15,12 +16,14 @@ type KeyConfig = {
 };
 
 export function Keypad({
+  digitCount,
   currentGuess,
   isInputLocked,
   onPushDigit,
   onPopDigit,
   onSubmit,
 }: {
+  digitCount: number;
   currentGuess: number[];
   isInputLocked: boolean;
   onPushDigit: (digit: number) => void;
@@ -28,7 +31,9 @@ export function Keypad({
   onSubmit: () => void;
 }) {
   const { t } = useTranslation();
-  const guessComplete = currentGuess.length === DIGIT_COUNT;
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const guessComplete = currentGuess.length === digitCount;
 
   const keyRows: KeyConfig[][] = [
     [
@@ -63,6 +68,16 @@ export function Keypad({
             const isEnterDisabled = Boolean(key.isEnter) && !guessComplete;
             const isDisabled = isInputLocked || isDelDisabled || isEnterDisabled || isDigitUsed;
 
+            const accessibilityLabel = key.isDel
+              ? t('a11y.keypadDelete')
+              : key.isEnter
+                ? t('a11y.keypadEnter')
+                : key.digit !== undefined
+                  ? isDigitUsed
+                    ? t('a11y.keypadDigitUsed', { digit: key.digit })
+                    : t('a11y.keypadDigit', { digit: key.digit })
+                  : key.label;
+
             return (
               <KeyButton
                 key={key.label}
@@ -71,6 +86,7 @@ export function Keypad({
                 variant={key.variant}
                 disabled={isDisabled}
                 used={isDigitUsed}
+                accessibilityLabel={accessibilityLabel}
               />
             );
           })}
@@ -80,14 +96,16 @@ export function Keypad({
   );
 }
 
-const styles = StyleSheet.create({
-  keypad: {
-    gap: spacing.sm,
-    paddingTop: spacing.sm,
-    paddingBottom: 40,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-});
+function createStyles(colors: ReturnType<typeof useTheme>['colors']) {
+  return StyleSheet.create({
+    keypad: {
+      gap: spacing.sm,
+      paddingTop: spacing.sm,
+      paddingBottom: 40,
+    },
+    row: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+  });
+}

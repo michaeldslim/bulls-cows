@@ -1,8 +1,13 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 
 export function Pill({ text, variant }: { text: string; variant: 'neutral' | 'good' | 'bad' }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View
       style={[
@@ -16,26 +21,28 @@ export function Pill({ text, variant }: { text: string; variant: 'neutral' | 'go
   );
 }
 
-const styles = StyleSheet.create({
-  pill: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.pill,
-    borderWidth: 1,
-    borderColor: colors.pillBorder,
-  },
-  pillGood: {
-    backgroundColor: colors.pillGood,
-    borderColor: colors.pillGoodBorder,
-  },
-  pillBad: {
-    backgroundColor: colors.pillBad,
-    borderColor: colors.pillBadBorder,
-  },
-  pillText: {
-    color: colors.text,
-    fontWeight: '800',
-    fontSize: 13,
-  },
-});
+function createStyles(colors: ReturnType<typeof useTheme>['colors']) {
+  return StyleSheet.create({
+    pill: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      borderRadius: radius.pill,
+      backgroundColor: colors.pill,
+      borderWidth: 1,
+      borderColor: colors.pillBorder,
+    },
+    pillGood: {
+      backgroundColor: colors.pillGood,
+      borderColor: colors.pillGoodBorder,
+    },
+    pillBad: {
+      backgroundColor: colors.pillBad,
+      borderColor: colors.pillBadBorder,
+    },
+    pillText: {
+      color: colors.text,
+      fontWeight: '800',
+      fontSize: 13,
+    },
+  });
+}

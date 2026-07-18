@@ -1,23 +1,50 @@
 import { useMemo, useRef, useState } from 'react';
-import * as Haptics from 'expo-haptics';
+import { AccessibilityInfo, LayoutAnimation, Platform, UIManager } from 'react-native';
 
-import type { IInningResult, ISettings } from '../../types';
+import type { GameMode, IHintReveal, IInningResult, ISettings } from '../../types';
 import {
-  DIGIT_COUNT,
+  DEFAULT_DIGIT_COUNT,
+  DEFAULT_TOTAL_INNINGS,
+  HINT_AFTER_ATTEMPTS,
+  MAX_HINTS_PER_INNING,
+} from '../constants/game';
+import i18n from '../i18n';
+import {
+  computeHintReveal,
   digitsToString,
+  generateDailySecret,
   generateSecretDigits,
+  getDailyDateKey,
   isValidGuessDigits,
   makeId,
 } from '../lib/game';
 import { computeOutsThisInning, submitGuessReducer, undoLastAttempt } from '../lib/inning';
+import { triggerHaptic } from '../lib/haptics';
 import { useSound } from './useSound';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 interface UseGameOptions {
   onGameComplete?: (results: IInningResult[]) => void;
 }
 
+function announceScore(strikes: number, balls: number, outs: number) {
+  void AccessibilityInfo.announceForAccessibility(
+    i18n.t('a11y.scoreResult', { strikes, balls, outs }),
+  );
+}
+
+function announceHint(position: number, digit: number) {
+  void AccessibilityInfo.announceForAccessibility(
+    i18n.t('a11y.hintRevealed', { position: position + 1, digit }),
+  );
+}
+
 export function useGame(settings: ISettings, options?: UseGameOptions) {
-  const [secret, setSecret] = useState<number[]>(() => generateSecretDigits());
+  const [gameMode, setGameMode] = useState<GameMode>('classic');
+  const [secret, setSecret] = useState<number[]>(() => generateSecretDigits(settings.digitCount));
   const [currentGuess, setCurrentGuess] = useState<number[]>([]);
   const [attempts, setAttempts] = useState<IInningResult['attempts']>([]);
   const [inning, setInning] = useState(1);
@@ -29,6 +56,12 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
   const [isScoring, setIsScoring] = useState(false);
   const [invalidShakeTrigger, setInvalidShakeTrigger] = useState(0);
   const [hasUsedUndoThisInning, setHasUsedUndoThisInning] = useState(false);
+  const [hintReveals, setHintReveals] = useState<IHintReveal[]>([]);
+  const [hintsUsedThisInning, setHintsUsedThisInning] = useState(0);
+
+  const digitCount = gameMode === 'daily' ? DEFAULT_DIGIT_COUNT : settings.digitCount;
+  const totalInnings = gameMode === 'daily' ? DEFAULT_TOTAL_INNINGS : settings.totalInnings;
+  const dailyDateKey = useMemo(() => getDailyDateKey(), []);
 
   const { playWinSound, playLoseSound, playCallSequence } = useSound(settings.soundEnabled);
   const onGameCompleteRef = useRef(options?.onGameComplete);
@@ -43,29 +76,36 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
     currentGuess.length === 0 &&
     attempts.length > 0;
 
+  function createSecret(inningNumber: number, mode: GameMode) {
+    if (mode === 'daily') {
+      return generateDailySecret(dailyDateKey, inningNumber, DEFAULT_DIGIT_COUNT);
+    }
+    return generateSecretDigits(settings.digitCount);
+  }
+
   function triggerErrorHaptic() {
     if (!settings.hapticsEnabled) return;
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    void triggerHaptic('error');
   }
 
   function triggerSelectionHaptic() {
     if (!settings.hapticsEnabled) return;
-    void Haptics.selectionAsync();
+    void triggerHaptic('selection');
   }
 
   function triggerImpactHaptic() {
     if (!settings.hapticsEnabled) return;
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void triggerHaptic('impact');
   }
 
   function triggerSuccessHaptic() {
     if (!settings.hapticsEnabled) return;
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    void triggerHaptic('success');
   }
 
   function triggerWarningHaptic() {
     if (!settings.hapticsEnabled) return;
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    void triggerHaptic('warning');
   }
 
   function finishGame(newInningResults: IInningResult[]) {
@@ -73,8 +113,27 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
     queueMicrotask(() => onGameCompleteRef.current?.(newInningResults));
   }
 
-  function resetFullGame() {
-    setSecret(generateSecretDigits());
+  function maybeRevealHint(newAttempts: IInningResult['attempts']) {
+    const revealedPositions = hintReveals.map((hint) => hint.position);
+    const hint = computeHintReveal(
+      newAttempts,
+      secret,
+      revealedPositions,
+      hintsUsedThisInning,
+      HINT_AFTER_ATTEMPTS,
+      MAX_HINTS_PER_INNING,
+    );
+
+    if (!hint) return;
+
+    setHintReveals((prev) => [...prev, hint]);
+    setHintsUsedThisInning((prev) => prev + 1);
+    announceHint(hint.position, hint.digit);
+  }
+
+  function resetFullGame(mode: GameMode = 'classic') {
+    setGameMode(mode);
+    setSecret(createSecret(1, mode));
     setCurrentGuess([]);
     setAttempts([]);
     setInning(1);
@@ -86,22 +145,27 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
     setIsScoring(false);
     setInvalidShakeTrigger(0);
     setHasUsedUndoThisInning(false);
+    setHintReveals([]);
+    setHintsUsedThisInning(0);
   }
 
   function startNextInning() {
-    setSecret(generateSecretDigits());
+    const nextInning = inning + 1;
+    setSecret(createSecret(nextInning, gameMode));
     setCurrentGuess([]);
     setAttempts([]);
     setLastStrikeMask(null);
     setInningEndVisible(false);
     setIsScoring(false);
     setHasUsedUndoThisInning(false);
-    setInning((prev) => prev + 1);
+    setHintReveals([]);
+    setHintsUsedThisInning(0);
+    setInning(nextInning);
   }
 
   function pushDigit(d: number) {
     if (isInputLocked) return;
-    if (currentGuess.length >= DIGIT_COUNT) return;
+    if (currentGuess.length >= digitCount) return;
     if (currentGuess.includes(d)) return;
     triggerSelectionHaptic();
     setLastStrikeMask(null);
@@ -122,6 +186,7 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
     if (!result) return;
 
     triggerSelectionHaptic();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setAttempts(result.newAttempts);
     setLastStrikeMask(null);
     setHasUsedUndoThisInning(true);
@@ -130,7 +195,7 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
   function submitGuess() {
     if (isInputLocked) return;
 
-    if (!isValidGuessDigits(currentGuess)) {
+    if (!isValidGuessDigits(currentGuess, digitCount)) {
       triggerErrorHaptic();
       setInvalidShakeTrigger((prev) => prev + 1);
       return;
@@ -140,6 +205,8 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
 
     const submitResult = submitGuessReducer({
       inning,
+      totalInnings,
+      digitCount,
       attempts,
       outsThisInning,
       guess: currentGuess,
@@ -148,11 +215,13 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
     });
 
     setLastStrikeMask(submitResult.lastStrikeMask);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setAttempts(submitResult.newAttempts);
     setCurrentGuess([]);
     setHasUsedUndoThisInning(false);
 
     const { score } = submitResult.attempt;
+    announceScore(score.strikes, score.balls, score.outs);
     setIsScoring(true);
 
     if (submitResult.outcome === 'run_scored') {
@@ -194,10 +263,15 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
       return;
     }
 
+    maybeRevealHint(submitResult.newAttempts);
     void playCallSequence(score.strikes, score.balls, score.outs).finally(() => setIsScoring(false));
   }
 
   return {
+    gameMode,
+    digitCount,
+    totalInnings,
+    dailyDateKey,
     secretPreview,
     currentGuess,
     attempts,
@@ -208,6 +282,7 @@ export function useGame(settings: ISettings, options?: UseGameOptions) {
     lastInningScored,
     gameEndVisible,
     lastStrikeMask,
+    hintReveals,
     isInputLocked,
     invalidShakeTrigger,
     canUndo,

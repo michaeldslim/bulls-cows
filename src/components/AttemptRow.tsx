@@ -1,13 +1,15 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { DigitResult, IAttempt } from '../../types';
-import { colors, radius, spacing } from '../theme';
+import { radius, spacing } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 import { Pill } from './Pill';
 
-function digitResultStyle(result: DigitResult) {
-  if (result === 'strike') return styles.strike;
-  if (result === 'ball') return styles.ball;
-  return styles.out;
+function digitResultStyle(colors: ReturnType<typeof useTheme>['colors'], result: DigitResult) {
+  if (result === 'strike') return { color: colors.success };
+  if (result === 'ball') return { color: colors.warning };
+  return { color: colors.textFaint };
 }
 
 export function AttemptRow({
@@ -19,6 +21,8 @@ export function AttemptRow({
   index: number;
   totalAttempts: number;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const attemptNumber = totalAttempts - index;
 
   return (
@@ -26,7 +30,7 @@ export function AttemptRow({
       <Text style={styles.index}>#{String(attemptNumber).padStart(2, '0')}</Text>
       <View style={styles.guess}>
         {attempt.guess.map((digit, i) => (
-          <Text key={i} style={[styles.digit, digitResultStyle(attempt.digitResults[i])]}>
+          <Text key={i} style={[styles.digit, digitResultStyle(colors, attempt.digitResults[i])]}>
             {digit}
           </Text>
         ))}
@@ -40,47 +44,40 @@ export function AttemptRow({
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.lg,
-  },
-  index: {
-    width: 40,
-    color: colors.textMuted,
-    fontWeight: '900',
-  },
-  guess: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    width: 70,
-  },
-  digit: {
-    fontSize: 20,
-    fontWeight: '900',
-    fontVariant: ['tabular-nums'],
-    width: 20,
-    textAlign: 'center',
-  },
-  strike: {
-    color: colors.success,
-  },
-  ball: {
-    color: colors.warning,
-  },
-  out: {
-    color: colors.textFaint,
-  },
-  score: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.md,
-  },
-});
+function createStyles(colors: ReturnType<typeof useTheme>['colors']) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.lg,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      padding: spacing.lg,
+    },
+    index: {
+      width: 40,
+      color: colors.textMuted,
+      fontWeight: '900',
+    },
+    guess: {
+      flexDirection: 'row',
+      gap: spacing.xs,
+      width: 70,
+    },
+    digit: {
+      fontSize: 20,
+      fontWeight: '900',
+      fontVariant: ['tabular-nums'],
+      width: 20,
+      textAlign: 'center',
+    },
+    score: {
+      flex: 1,
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: spacing.md,
+    },
+  });
+}

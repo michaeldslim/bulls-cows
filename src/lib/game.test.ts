@@ -2,14 +2,17 @@ import { describe, expect, it } from 'vitest';
 
 import {
   classifyGuessDigits,
-  DIGIT_COUNT,
+  computeHintReveal,
+  generateDailySecret,
   generateSecretDigits,
+  getDailyDateKey,
   isValidGuessDigits,
   scoreGuess,
 } from './game';
 import { computeOutsThisInning, submitGuessReducer, undoLastAttempt } from './inning';
 import { averageAttemptsPerScoredInning, DEFAULT_STATS, updateStatsAfterGame } from './stats';
 import type { IAttempt } from '../../types';
+import { DEFAULT_DIGIT_COUNT, DEFAULT_TOTAL_INNINGS } from '../constants/game';
 
 function makeAttempt(outs: number, strikes = 0, balls = 0): IAttempt {
   return {
@@ -23,12 +26,38 @@ function makeAttempt(outs: number, strikes = 0, balls = 0): IAttempt {
 describe('generateSecretDigits', () => {
   it('returns 3 unique digits in range 0-9', () => {
     const secret = generateSecretDigits();
-    expect(secret).toHaveLength(DIGIT_COUNT);
-    expect(new Set(secret).size).toBe(DIGIT_COUNT);
+    expect(secret).toHaveLength(DEFAULT_DIGIT_COUNT);
+    expect(new Set(secret).size).toBe(DEFAULT_DIGIT_COUNT);
     secret.forEach((digit) => {
       expect(digit).toBeGreaterThanOrEqual(0);
       expect(digit).toBeLessThanOrEqual(9);
     });
+  });
+
+  it('returns 4 unique digits when requested', () => {
+    const secret = generateSecretDigits(4);
+    expect(secret).toHaveLength(4);
+    expect(new Set(secret).size).toBe(4);
+  });
+});
+
+describe('generateDailySecret', () => {
+  it('is deterministic for the same date and inning', () => {
+    const a = generateDailySecret('2026-07-18', 1, 3);
+    const b = generateDailySecret('2026-07-18', 1, 3);
+    expect(a).toEqual(b);
+  });
+
+  it('differs across innings', () => {
+    const a = generateDailySecret('2026-07-18', 1, 3);
+    const b = generateDailySecret('2026-07-18', 2, 3);
+    expect(a).not.toEqual(b);
+  });
+});
+
+describe('getDailyDateKey', () => {
+  it('formats as YYYY-MM-DD', () => {
+    expect(getDailyDateKey(new Date('2026-07-18T12:00:00'))).toBe('2026-07-18');
   });
 });
 
@@ -36,6 +65,10 @@ describe('isValidGuessDigits', () => {
   it('accepts 3 unique digits', () => {
     expect(isValidGuessDigits([1, 2, 3])).toBe(true);
     expect(isValidGuessDigits([0, 5, 9])).toBe(true);
+  });
+
+  it('accepts 4 unique digits when configured', () => {
+    expect(isValidGuessDigits([1, 2, 3, 4], 4)).toBe(true);
   });
 
   it('rejects wrong length, duplicates, and out-of-range digits', () => {
@@ -61,10 +94,27 @@ describe('classifyGuessDigits', () => {
   });
 });
 
+describe('computeHintReveal', () => {
+  it('reveals a hint after enough attempts', () => {
+    const secret = [1, 2, 3];
+    const attempts = [makeAttempt(1), makeAttempt(1), makeAttempt(1)];
+    const hint = computeHintReveal(attempts, secret, [], 0, 3, 1);
+    expect(hint).not.toBeNull();
+    expect(secret[hint!.position]).toBe(hint!.digit);
+  });
+
+  it('returns null when hints are exhausted', () => {
+    const attempts = [makeAttempt(1), makeAttempt(1), makeAttempt(1)];
+    expect(computeHintReveal(attempts, [1, 2, 3], [0], 1, 3, 1)).toBeNull();
+  });
+});
+
 describe('submitGuessReducer', () => {
   it('continues inning when outs remain', () => {
     const result = submitGuessReducer({
       inning: 1,
+      totalInnings: DEFAULT_TOTAL_INNINGS,
+      digitCount: DEFAULT_DIGIT_COUNT,
       attempts: [],
       outsThisInning: 0,
       guess: [1, 3, 4],
@@ -81,6 +131,8 @@ describe('submitGuessReducer', () => {
   it('ends inning on 3 outs', () => {
     const result = submitGuessReducer({
       inning: 2,
+      totalInnings: DEFAULT_TOTAL_INNINGS,
+      digitCount: DEFAULT_DIGIT_COUNT,
       attempts: [makeAttempt(2)],
       outsThisInning: 2,
       guess: [4, 5, 6],
@@ -93,9 +145,11 @@ describe('submitGuessReducer', () => {
     expect(result.showInningEnd).toBe(true);
   });
 
-  it('scores a run on 3 strikes', () => {
+  it('scores a run on full strikes', () => {
     const result = submitGuessReducer({
       inning: 9,
+      totalInnings: DEFAULT_TOTAL_INNINGS,
+      digitCount: DEFAULT_DIGIT_COUNT,
       attempts: [],
       outsThisInning: 0,
       guess: [1, 2, 3],

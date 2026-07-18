@@ -1,11 +1,13 @@
 import type { IAttempt, IInningResult } from '../../types';
-import { classifyGuessDigits, DIGIT_COUNT, scoreGuess } from './game';
-import { OUTS_PER_INNING, TOTAL_INNINGS } from '../constants/game';
+import { OUTS_PER_INNING } from '../constants/game';
+import { classifyGuessDigits, scoreGuess } from './game';
 
 export type InningOutcome = 'continue' | 'run_scored' | 'inning_over';
 
 export interface ISubmitGuessInput {
   inning: number;
+  totalInnings: number;
+  digitCount: number;
   attempts: IAttempt[];
   outsThisInning: number;
   guess: number[];
@@ -41,7 +43,7 @@ export function submitGuessReducer(input: ISubmitGuessInput): ISubmitGuessResult
   const newOutsThisInning = input.outsThisInning + score.outs;
   const lastStrikeMask = input.guess.map((digit, index) => digit === input.secret[index]);
 
-  if (score.strikes === DIGIT_COUNT) {
+  if (score.strikes === input.digitCount) {
     return {
       attempt,
       newAttempts,
@@ -49,8 +51,8 @@ export function submitGuessReducer(input: ISubmitGuessInput): ISubmitGuessResult
       lastStrikeMask,
       outcome: 'run_scored',
       inningResult: { inning: input.inning, scored: true, attempts: newAttempts },
-      showGameEnd: input.inning >= TOTAL_INNINGS,
-      showInningEnd: input.inning < TOTAL_INNINGS,
+      showGameEnd: input.inning >= input.totalInnings,
+      showInningEnd: input.inning < input.totalInnings,
     };
   }
 
@@ -62,8 +64,8 @@ export function submitGuessReducer(input: ISubmitGuessInput): ISubmitGuessResult
       lastStrikeMask,
       outcome: 'inning_over',
       inningResult: { inning: input.inning, scored: false, attempts: newAttempts },
-      showGameEnd: input.inning >= TOTAL_INNINGS,
-      showInningEnd: input.inning < TOTAL_INNINGS,
+      showGameEnd: input.inning >= input.totalInnings,
+      showInningEnd: input.inning < input.totalInnings,
     };
   }
 

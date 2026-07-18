@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { Pressable, type StyleProp, StyleSheet, Text, type ViewStyle } from 'react-native';
 
-import { colors, radius } from '../theme';
+import { radius } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 
 export function PrimaryButton({
   label,
@@ -11,6 +13,9 @@ export function PrimaryButton({
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.button, style, pressed && styles.pressed]}>
       <Text style={styles.text}>{label}</Text>
@@ -18,19 +23,21 @@ export function PrimaryButton({
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  text: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  pressed: {
-    opacity: 0.85,
-  },
-});
+function createStyles(colors: ReturnType<typeof useTheme>['colors']) {
+  return StyleSheet.create({
+    button: {
+      backgroundColor: colors.primary,
+      borderRadius: radius.md,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    text: {
+      color: colors.onPrimary,
+      fontSize: 16,
+      fontWeight: '800',
+    },
+    pressed: {
+      opacity: 0.85,
+    },
+  });
+}

@@ -66,17 +66,17 @@ Use this plan when adding features or refactoring. Prioritize small, shippable s
 
 ### Logic
 
-- [ ] **Configurable difficulty** — optional 4-digit mode or fewer innings (constants in `src/constants/game.ts`).
-- [ ] **Daily challenge** — seeded secret from date string so all players share the same puzzle.
-- [ ] **Hint system** — after N failed attempts in an inning, reveal one digit position (limit hints per inning).
+- [x] **Configurable difficulty** — optional 4-digit mode or fewer innings (constants in `src/constants/game.ts`).
+- [x] **Daily challenge** — seeded secret from date string so all players share the same puzzle.
+- [x] **Hint system** — after N failed attempts in an inning, reveal one digit position (limit hints per inning).
 
 ### UI
 
-- [ ] **Animations** — `LayoutAnimation` or Reanimated for attempt list insert, out-dot fill, modal enter.
-- [ ] **Accessibility** — `accessibilityLabel` on keypad and guess boxes; announce S/B/O results via `AccessibilityInfo.announceForAccessibility`.
-- [ ] **Dark mode** — theme tokens + `useColorScheme`; StatusBar follows scheme.
-- [ ] **Responsive layout** — constrain max width on tablets; optional landscape scoreboard sidebar.
-- [ ] **Onboarding** — first-launch tooltip or collapsible “How to play” on game screen.
+- [x] **Animations** — `LayoutAnimation` or Reanimated for attempt list insert, out-dot fill, modal enter.
+- [x] **Accessibility** — `accessibilityLabel` on keypad and guess boxes; announce S/B/O results via `AccessibilityInfo.announceForAccessibility`.
+- [x] **Dark mode** — theme tokens + `useColorScheme`; StatusBar follows scheme.
+- [x] **Responsive layout** — constrain max width on tablets; optional landscape scoreboard sidebar.
+- [x] **Onboarding** — first-launch tooltip or collapsible “How to play” on game screen.
 
 ---
 
@@ -112,4 +112,4 @@ Use this plan when adding features or refactoring. Prioritize small, shippable s
 
 ## Suggested Next Task
 
-Start with **Phase 3**: accessibility labels, dark mode theme tokens, and attempt-list animations.
+Phase 3 is complete. Consider polish follow-ups: stats segmented by difficulty, daily challenge leaderboard/share, or haptic patterns per S/B/O call.
