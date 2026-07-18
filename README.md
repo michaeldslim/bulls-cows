@@ -1,34 +1,36 @@
 # Bulls Cows (숫자야구)
 
-A simple **3-digit Strike / Ball / Out** number-baseball game built with **React Native + TypeScript + Expo (SDK 55)**.
+A **3-digit Strike / Ball / Out** number-baseball game built with **React Native + TypeScript + Expo (SDK 55)**.
 
 ## Game Rules
 
-- **Secret**: 3 digits
-- **Digits are unique** (no duplicates)
-- **0 is allowed**
-- **Win condition**: `3 Strikes`
-- **Max attempts**: `10` (Game Over after 10 tries)
+- **Secret**: 3 unique digits (0–9, no duplicates)
+- **Innings**: Play 9 innings, each with a new secret number
+- **Outs**: Each guess adds outs for digits not in the secret; 3 outs ends the inning
+- **Run**: Guess all 3 digits correctly (3 strikes) before 3 outs to score a run
+- **Goal**: Score as many runs as possible across all 9 innings (perfect game = 9 runs)
 
 ### Scoring
 
 - **Strike (S)**: correct digit in the correct position
 - **Ball (B)**: correct digit but wrong position
-- **Out (O)**: digit not included in the secret
+- **Out (O)**: digit not in the secret — counts toward 3 outs per inning
 
-Example:
+Example (secret `123`):
 
-- Secret: `123`
-- Guess: `134`
-- Result: `1S 1B 1O`
+- Guess `134` → `1S 1B 1O` (1 out)
+- Guess `120` → `2S 0B 1O` (2 outs)
+- Guess `123` → `3S 0B 0O` → Run!
 
 ## Features
 
-- **Keypad input** (prevents duplicate digits)
-- **Active digit highlight** (yellow border)
-- **Strike position highlight after submit** (sky-blue border)
-- **Haptic feedback** on keypad/submit/win/game over (`expo-haptics`)
-- **Attempt history list** (latest attempt shown at the top)
+- **Keypad input** with used-digit dimming and disabled Enter until guess is complete
+- **Active digit highlight** (yellow border) and strike-position flash after submit
+- **Per-digit attempt coloring** — green = strike, yellow = ball, gray = out
+- **Shake feedback** on invalid/incomplete guesses
+- **Sound effects** and **haptic feedback** (toggleable in Settings)
+- **9-inning scoreboard** with run/out tracking and perfect-game celebration
+- **Attempt history** (latest attempt shown at the top)
 
 ## Tech Stack
 
@@ -39,16 +41,11 @@ Example:
 
 ## Project Structure
 
-- `App.tsx`
-  - UI screens (Home / How to Play / Game)
-  - Attempt limit (10 tries)
-  - Haptics + highlights
-- `src/lib/game.ts`
-  - Secret generation
-  - Guess validation
-  - Strike/Ball/Out scoring
-- `types/index.ts`
-  - Shared TypeScript types (`IAttempt`, `IScore`)
+- `App.tsx` — Home and Game screens, keypad, modals
+- `src/lib/game.ts` — Secret generation, validation, scoring, digit classification
+- `src/hooks/useGame.ts` — Inning/session state and game flow
+- `src/hooks/useSettings.ts` — Persisted sound/haptics preferences
+- `types/index.ts` — Shared TypeScript types
 
 ## Getting Started
 

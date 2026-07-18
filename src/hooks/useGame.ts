@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 import * as Haptics from 'expo-haptics';
-import { Alert } from 'react-native';
 
-import type { IAttempt, IInningResult } from '../../types';
+import type { IAttempt, IInningResult, ISettings } from '../../types';
 import {
+  classifyGuessDigits,
   DIGIT_COUNT,
   digitsToString,
   generateSecretDigits,
@@ -14,7 +14,7 @@ import {
 import { TOTAL_INNINGS, OUTS_PER_INNING } from '../constants/game';
 import { useSound } from './useSound';
 
-export function useGame() {
+export function useGame(settings: ISettings) {
   const [secret, setSecret] = useState<number[]>(() => generateSecretDigits());
   const [currentGuess, setCurrentGuess] = useState<number[]>([]);
   const [attempts, setAttempts] = useState<IAttempt[]>([]);
@@ -24,8 +24,10 @@ export function useGame() {
   const [lastInningScored, setLastInningScored] = useState(false);
   const [gameEndVisible, setGameEndVisible] = useState(false);
   const [lastStrikeMask, setLastStrikeMask] = useState<boolean[] | null>(null);
+  const [isScoring, setIsScoring] = useState(false);
+  const [invalidShakeTrigger, setInvalidShakeTrigger] = useState(0);
 
-  const { playWinSound, playLoseSound, playCallSequence } = useSound();
+  const { playWinSound, playLoseSound, playCallSequence } = useSound(settings.soundEnabled);
 
   const secretPreview = useMemo(() => digitsToString(secret), [secret]);
 
@@ -33,6 +35,33 @@ export function useGame() {
     () => attempts.reduce((sum, a) => sum + a.score.outs, 0),
     [attempts],
   );
+
+  const isInputLocked = inningEndVisible || gameEndVisible || isScoring;
+
+  function triggerErrorHaptic() {
+    if (!settings.hapticsEnabled) return;
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+  }
+
+  function triggerSelectionHaptic() {
+    if (!settings.hapticsEnabled) return;
+    void Haptics.selectionAsync();
+  }
+
+  function triggerImpactHaptic() {
+    if (!settings.hapticsEnabled) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
+
+  function triggerSuccessHaptic() {
+    if (!settings.hapticsEnabled) return;
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }
+
+  function triggerWarningHaptic() {
+    if (!settings.hapticsEnabled) return;
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+  }
 
   function resetFullGame() {
     setSecret(generateSecretDigits());
@@ -44,6 +73,8 @@ export function useGame() {
     setLastInningScored(false);
     setGameEndVisible(false);
     setLastStrikeMask(null);
+    setIsScoring(false);
+    setInvalidShakeTrigger(0);
   }
 
   function startNextInning() {
@@ -52,39 +83,41 @@ export function useGame() {
     setAttempts([]);
     setLastStrikeMask(null);
     setInningEndVisible(false);
+    setIsScoring(false);
     setInning((prev) => prev + 1);
   }
 
   function pushDigit(d: number) {
-    if (inningEndVisible || gameEndVisible) return;
+    if (isInputLocked) return;
     if (currentGuess.length >= DIGIT_COUNT) return;
     if (currentGuess.includes(d)) return;
-    void Haptics.selectionAsync();
+    triggerSelectionHaptic();
     setLastStrikeMask(null);
     setCurrentGuess((prev) => [...prev, d]);
   }
 
   function popDigit() {
-    if (inningEndVisible || gameEndVisible) return;
-    void Haptics.selectionAsync();
+    if (isInputLocked) return;
+    triggerSelectionHaptic();
     setLastStrikeMask(null);
     setCurrentGuess((prev) => prev.slice(0, -1));
   }
 
   function submitGuess() {
-    if (inningEndVisible || gameEndVisible) return;
+    if (isInputLocked) return;
 
     if (!isValidGuessDigits(currentGuess)) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert('Invalid guess', 'Enter 3 unique digits (0-9).');
+      triggerErrorHaptic();
+      setInvalidShakeTrigger((prev) => prev + 1);
       return;
     }
 
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    triggerImpactHaptic();
 
     const score = scoreGuess(secret, currentGuess);
+    const digitResults = classifyGuessDigits(secret, currentGuess);
     setLastStrikeMask(currentGuess.map((d, i) => d === secret[i]));
-    const attempt: IAttempt = { id: makeId(), guess: currentGuess, score };
+    const attempt: IAttempt = { id: makeId(), guess: currentGuess, score, digitResults };
     const newAttempts = [attempt, ...attempts];
     setAttempts(newAttempts);
     setCurrentGuess([]);
@@ -92,10 +125,11 @@ export function useGame() {
     const newOuts = outsThisInning + score.outs;
     const inningOver = newOuts >= OUTS_PER_INNING;
 
+    setIsScoring(true);
+
     if (score.strikes === DIGIT_COUNT) {
-      // Run scored — play calls immediately, show modal without waiting
-      void playCallSequence(score.strikes, score.balls, score.outs);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void playCallSequence(score.strikes, score.balls, score.outs).finally(() => setIsScoring(false));
+      triggerSuccessHaptic();
       void playWinSound();
       setLastInningScored(true);
       const result: IInningResult = { inning, scored: true, attempts: newAttempts };
@@ -109,8 +143,7 @@ export function useGame() {
     }
 
     if (inningOver) {
-      // 3 outs — wait for call sequence to finish before showing modal
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      triggerWarningHaptic();
       setLastInningScored(false);
       const result: IInningResult = { inning, scored: false, attempts: newAttempts };
       setInningResults((prev) => [...prev, result]);
@@ -121,12 +154,11 @@ export function useGame() {
         } else {
           setInningEndVisible(true);
         }
-      });
+      }).finally(() => setIsScoring(false));
       return;
     }
 
-    // Regular guess — play calls and continue
-    void playCallSequence(score.strikes, score.balls, score.outs);
+    void playCallSequence(score.strikes, score.balls, score.outs).finally(() => setIsScoring(false));
   }
 
   return {
@@ -140,6 +172,8 @@ export function useGame() {
     lastInningScored,
     gameEndVisible,
     lastStrikeMask,
+    isInputLocked,
+    invalidShakeTrigger,
     resetFullGame,
     startNextInning,
     pushDigit,
@@ -147,5 +181,3 @@ export function useGame() {
     submitGuess,
   };
 }
-
-

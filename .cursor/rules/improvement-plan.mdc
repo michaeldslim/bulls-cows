@@ -21,17 +21,17 @@ Use this plan when adding features or refactoring. Prioritize small, shippable s
 
 ### Logic
 
-- [ ] **Disable Enter until guess is complete** — `submitGuess` already validates; disable the Enter key and show helper text when `currentGuess.length < DIGIT_COUNT`.
-- [ ] **Gray out used digits on keypad** — pass `currentGuess` into keypad; dim keys whose digit is already entered (duplicate prevention is silent today).
-- [ ] **Block input during sound/modal transitions** — `inningEndVisible` / `gameEndVisible` already gate input; also disable keypad while `playCallSequence` is in flight to avoid double-submit.
-- [ ] **Sync README with actual rules** — document innings, outs, and run scoring; remove the 10-attempt limit.
+- [x] **Disable Enter until guess is complete** — `submitGuess` already validates; disable the Enter key and show helper text when `currentGuess.length < DIGIT_COUNT`.
+- [x] **Gray out used digits on keypad** — pass `currentGuess` into keypad; dim keys whose digit is already entered (duplicate prevention is silent today).
+- [x] **Block input during sound/modal transitions** — `inningEndVisible` / `gameEndVisible` already gate input; also disable keypad while `playCallSequence` is in flight to avoid double-submit.
+- [x] **Sync README with actual rules** — document innings, outs, and run scoring; remove the 10-attempt limit.
 
 ### UI
 
-- [ ] **Per-digit feedback in attempt history** — color each digit in `AttemptRow`: green = strike, yellow = ball, gray = out (reuse strike-position logic from guess boxes).
-- [ ] **Shake or pulse on invalid submit** — brief animation on guess boxes when validation fails (replace or supplement `Alert`).
-- [ ] **Perfect-game celebration** — when `inningResults.filter(r => r.scored).length === TOTAL_INNINGS`, show distinct copy/emoji on game-end modal.
-- [ ] **Settings toggles** — sound on/off, haptics on/off (persist with `AsyncStorage`).
+- [x] **Per-digit feedback in attempt history** — color each digit in `AttemptRow`: green = strike, yellow = ball, gray = out (reuse strike-position logic from guess boxes).
+- [x] **Shake or pulse on invalid submit** — brief animation on guess boxes when validation fails (replace or supplement `Alert`).
+- [x] **Perfect-game celebration** — when `inningResults.filter(r => r.scored).length === TOTAL_INNINGS`, show distinct copy/emoji on game-end modal.
+- [x] **Settings toggles** — sound on/off, haptics on/off (persist with `AsyncStorage`).
 
 ---
 

@@ -67,7 +67,7 @@ async function playOneShot(source: unknown): Promise<void> {
   });
 }
 
-export function useSound() {
+export function useSound(enabled: boolean) {
   const winSoundRef = useRef<Audio.Sound | null>(null);
   const loseSoundRef = useRef<Audio.Sound | null>(null);
 
@@ -82,10 +82,17 @@ export function useSound() {
     };
   }, []);
 
-  const playWinSound = () => playOnce(winSoundRef, SOUND_WIN);
-  const playLoseSound = () => playOnce(loseSoundRef, SOUND_LOSE);
+  const playWinSound = () => {
+    if (!enabled) return Promise.resolve();
+    return playOnce(winSoundRef, SOUND_WIN);
+  };
+  const playLoseSound = () => {
+    if (!enabled) return Promise.resolve();
+    return playOnce(loseSoundRef, SOUND_LOSE);
+  };
 
   async function playCallSequence(strikes: number, balls: number, outs: number) {
+    if (!enabled) return;
     const sources: unknown[] = [];
     if (strikes > 0 && SOUNDS_STRIKES[strikes]) sources.push(SOUNDS_STRIKES[strikes]);
     if (balls > 0 && SOUNDS_BALLS[balls]) sources.push(SOUNDS_BALLS[balls]);

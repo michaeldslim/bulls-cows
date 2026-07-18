@@ -1,13 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   Modal,
   Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
   StatusBar as RNStatusBar,
+  Switch,
   type StyleProp,
   StyleSheet,
   Text,
@@ -16,10 +18,11 @@ import {
   View,
 } from 'react-native';
 
-import type { IAttempt } from './types';
-import { DIGIT_COUNT, digitsToString } from './src/lib/game';
+import type { DigitResult, IAttempt } from './types';
+import { DIGIT_COUNT } from './src/lib/game';
 import { type Screen, TOTAL_INNINGS, OUTS_PER_INNING } from './src/constants/game';
 import { useGame } from './src/hooks/useGame';
+import { useSettings } from './src/hooks/useSettings';
 import { ordinal } from './src/utils/format';
 
 function Pill({ text, variant }: { text: string; variant: 'neutral' | 'good' | 'bad' }) {
@@ -75,25 +78,67 @@ function KeyButton({
   label,
   onPress,
   variant,
+  disabled,
+  used,
 }: {
   label: string;
   onPress: () => void;
   variant?: 'default' | 'action';
+  disabled?: boolean;
+  used?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       style={({ pressed }) => [
         styles.keyButton,
         variant === 'action' ? styles.keyButtonAction : undefined,
-        pressed && styles.pressed,
+        used ? styles.keyButtonUsed : undefined,
+        disabled ? styles.keyButtonDisabled : undefined,
+        pressed && !disabled && styles.pressed,
       ]}
     >
-      <Text style={[styles.keyButtonText, variant === 'action' ? styles.keyButtonTextAction : undefined]}>
+      <Text
+        style={[
+          styles.keyButtonText,
+          variant === 'action' ? styles.keyButtonTextAction : undefined,
+          used ? styles.keyButtonTextUsed : undefined,
+          disabled && variant === 'action' ? styles.keyButtonTextDisabled : undefined,
+        ]}
+      >
         {label}
       </Text>
     </Pressable>
   );
+}
+
+function SettingsRow({
+  label,
+  value,
+  onValueChange,
+}: {
+  label: string;
+  value: boolean;
+  onValueChange: (next: boolean) => void;
+}) {
+  return (
+    <View style={styles.settingsRow}>
+      <Text style={styles.settingsLabel}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: '#D1D5DB', true: '#93C5FD' }}
+        thumbColor={value ? '#1D4ED8' : '#F9FAFB'}
+      />
+    </View>
+  );
+}
+
+function digitResultStyle(result: DigitResult) {
+  if (result === 'strike') return styles.attemptDigitStrike;
+  if (result === 'ball') return styles.attemptDigitBall;
+  return styles.attemptDigitOut;
 }
 
 function AttemptRow({
@@ -105,18 +150,80 @@ function AttemptRow({
   index: number;
   totalAttempts: number;
 }) {
-  const guessText = digitsToString(attempt.guess);
   const attemptNumber = totalAttempts - index;
   return (
     <View style={styles.attemptRow}>
       <Text style={styles.attemptIndex}>#{String(attemptNumber).padStart(2, '0')}</Text>
-      <Text style={styles.attemptGuess}>{guessText}</Text>
+      <View style={styles.attemptGuess}>
+        {attempt.guess.map((digit, i) => (
+          <Text key={i} style={[styles.attemptDigit, digitResultStyle(attempt.digitResults[i])]}>
+            {digit}
+          </Text>
+        ))}
+      </View>
       <View style={styles.attemptScore}>
         <Pill text={`${attempt.score.strikes}S`} variant={attempt.score.strikes > 0 ? 'good' : 'neutral'} />
         <Pill text={`${attempt.score.balls}B`} variant={attempt.score.balls > 0 ? 'good' : 'neutral'} />
         <Pill text={`${attempt.score.outs}O`} variant={attempt.score.outs > 0 ? 'bad' : 'neutral'} />
       </View>
     </View>
+  );
+}
+
+function GuessBoxes({
+  currentGuess,
+  lastStrikeMask,
+  inningEndVisible,
+  gameEndVisible,
+  shakeTrigger,
+}: {
+  currentGuess: number[];
+  lastStrikeMask: boolean[] | null;
+  inningEndVisible: boolean;
+  gameEndVisible: boolean;
+  shakeTrigger: number;
+}) {
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (shakeTrigger === 0) return;
+    shakeAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 8, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -8, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 8, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start();
+  }, [shakeTrigger, shakeAnim]);
+
+  return (
+    <Animated.View style={[styles.guessBoxes, { transform: [{ translateX: shakeAnim }] }]}>
+      {Array.from({ length: DIGIT_COUNT }, (_, i) => {
+        const val = currentGuess[i];
+        const activeIndex = currentGuess.length;
+        const showStrikes =
+          !inningEndVisible && !gameEndVisible && currentGuess.length === 0 && lastStrikeMask !== null;
+        const isStrike = showStrikes ? Boolean(lastStrikeMask?.[i]) : false;
+        const isActive =
+          !inningEndVisible &&
+          !gameEndVisible &&
+          !showStrikes &&
+          activeIndex < DIGIT_COUNT &&
+          i === activeIndex;
+        return (
+          <View
+            key={i}
+            style={[
+              styles.guessBox,
+              isStrike ? styles.guessBoxStrike : undefined,
+              isActive ? styles.guessBoxActive : undefined,
+            ]}
+          >
+            <Text style={styles.guessBoxText}>{val === undefined ? '' : String(val)}</Text>
+          </View>
+        );
+      })}
+    </Animated.View>
   );
 }
 
@@ -174,6 +281,7 @@ function ScreenHeader({
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
+  const { settings, updateSettings } = useSettings();
 
   const {
     secretPreview,
@@ -186,33 +294,53 @@ export default function App() {
     lastInningScored,
     gameEndVisible,
     lastStrikeMask,
+    isInputLocked,
+    invalidShakeTrigger,
     resetFullGame,
     startNextInning,
     pushDigit,
     popDigit,
     submitGuess,
-  } = useGame();
+  } = useGame(settings);
 
-  const keyRows: Array<Array<{ label: string; onPress: () => void; variant?: 'default' | 'action' }>> = [
+  const guessComplete = currentGuess.length === DIGIT_COUNT;
+  const runsScored = inningResults.filter((r) => r.scored).length;
+  const isPerfectGame = gameEndVisible && runsScored === TOTAL_INNINGS;
+
+  const helperText = isInputLocked
+    ? 'Scoring your guess...'
+    : guessComplete
+      ? 'Tap Enter to submit'
+      : `Enter ${DIGIT_COUNT - currentGuess.length} more digit${DIGIT_COUNT - currentGuess.length === 1 ? '' : 's'}. No duplicates.`;
+
+  const keyRows: Array<
+    Array<{
+      label: string;
+      onPress: () => void;
+      variant?: 'default' | 'action';
+      digit?: number;
+      isEnter?: boolean;
+    }>
+  > = [
     [
-      { label: '1', onPress: () => pushDigit(1) },
-      { label: '2', onPress: () => pushDigit(2) },
-      { label: '3', onPress: () => pushDigit(3) },
+      { label: '1', onPress: () => pushDigit(1), digit: 1 },
+      { label: '2', onPress: () => pushDigit(2), digit: 2 },
+      { label: '3', onPress: () => pushDigit(3), digit: 3 },
     ],
     [
-      { label: '4', onPress: () => pushDigit(4) },
-      { label: '5', onPress: () => pushDigit(5) },
-      { label: '6', onPress: () => pushDigit(6) },
+      { label: '4', onPress: () => pushDigit(4), digit: 4 },
+      { label: '5', onPress: () => pushDigit(5), digit: 5 },
+      { label: '6', onPress: () => pushDigit(6), digit: 6 },
     ],
     [
-      { label: '7', onPress: () => pushDigit(7) },
-      { label: '8', onPress: () => pushDigit(8) },
-      { label: '9', onPress: () => pushDigit(9) },
+      { label: '7', onPress: () => pushDigit(7), digit: 7 },
+      { label: '8', onPress: () => pushDigit(8), digit: 8 },
+      { label: '9', onPress: () => pushDigit(9), digit: 9 },
     ],
     [
       { label: 'Del', onPress: popDigit, variant: 'action' },
-      { label: '0', onPress: () => pushDigit(0) },
-      { label: 'Enter', onPress: submitGuess, variant: 'action' },
+      { label: '0', onPress: () => pushDigit(0), digit: 0 },
+      { label: 'Enter', onPress: submitGuess, variant: 'action', isEnter: true },
     ],
   ];
 
@@ -261,6 +389,20 @@ export default function App() {
             <View style={styles.howtoCard}>
               <Text style={styles.howtoText}>Score as many runs as possible across all {TOTAL_INNINGS} innings.</Text>
               <Text style={styles.howtoText}>Perfect game = {TOTAL_INNINGS} runs!</Text>
+            </View>
+
+            <Text style={styles.howtoTitle}>Settings</Text>
+            <View style={styles.howtoCard}>
+              <SettingsRow
+                label="Sound effects"
+                value={settings.soundEnabled}
+                onValueChange={(soundEnabled) => updateSettings({ soundEnabled })}
+              />
+              <SettingsRow
+                label="Haptic feedback"
+                value={settings.hapticsEnabled}
+                onValueChange={(hapticsEnabled) => updateSettings({ hapticsEnabled })}
+              />
             </View>
           </ScrollView>
 
@@ -332,34 +474,14 @@ export default function App() {
               </View>
             </View>
 
-            <View style={styles.guessBoxes}>
-              {Array.from({ length: DIGIT_COUNT }, (_, i) => {
-                const val = currentGuess[i];
-                const activeIndex = currentGuess.length;
-                const showStrikes =
-                  !inningEndVisible && !gameEndVisible && currentGuess.length === 0 && lastStrikeMask !== null;
-                const isStrike = showStrikes ? Boolean(lastStrikeMask?.[i]) : false;
-                const isActive =
-                  !inningEndVisible &&
-                  !gameEndVisible &&
-                  !showStrikes &&
-                  activeIndex < DIGIT_COUNT &&
-                  i === activeIndex;
-                return (
-                  <View
-                    key={i}
-                    style={[
-                      styles.guessBox,
-                      isStrike ? styles.guessBoxStrike : undefined,
-                      isActive ? styles.guessBoxActive : undefined,
-                    ]}
-                  >
-                    <Text style={styles.guessBoxText}>{val === undefined ? '' : String(val)}</Text>
-                  </View>
-                );
-              })}
-            </View>
-            <Text style={styles.helperText}>Tap digits below. No duplicates.</Text>
+            <GuessBoxes
+              currentGuess={currentGuess}
+              lastStrikeMask={lastStrikeMask}
+              inningEndVisible={inningEndVisible}
+              gameEndVisible={gameEndVisible}
+              shakeTrigger={invalidShakeTrigger}
+            />
+            <Text style={styles.helperText}>{helperText}</Text>
           </View>
 
           <ScrollView style={styles.history} contentContainerStyle={styles.historyContent}>
@@ -377,9 +499,22 @@ export default function App() {
           <View style={styles.keypad}>
             {keyRows.map((row, rIdx) => (
               <View key={rIdx} style={styles.keyRow}>
-                {row.map((k) => (
-                  <KeyButton key={k.label} label={k.label} onPress={k.onPress} variant={k.variant} />
-                ))}
+                {row.map((k) => {
+                  const isDigitUsed = k.digit !== undefined && currentGuess.includes(k.digit);
+                  const isDelDisabled = k.label === 'Del' && currentGuess.length === 0;
+                  const isEnterDisabled = Boolean(k.isEnter) && !guessComplete;
+                  const isDisabled = isInputLocked || isDelDisabled || isEnterDisabled || isDigitUsed;
+                  return (
+                    <KeyButton
+                      key={k.label}
+                      label={k.label}
+                      onPress={k.onPress}
+                      variant={k.variant}
+                      disabled={isDisabled}
+                      used={isDigitUsed}
+                    />
+                  );
+                })}
               </View>
             ))}
           </View>
@@ -406,7 +541,14 @@ export default function App() {
           <Modal visible={gameEndVisible} transparent animationType="fade" onRequestClose={() => {}}>
             <View style={styles.modalBackdrop}>
               <View style={styles.modalCard}>
-                <Text style={styles.modalTitle}>Full Game Done!</Text>
+                <Text style={styles.modalTitle}>
+                  {isPerfectGame ? '🏆 Perfect Game!' : 'Full Game Done!'}
+                </Text>
+                {isPerfectGame ? (
+                  <Text style={styles.modalText}>
+                    You scored a run in every inning — a flawless {TOTAL_INNINGS}-run performance!
+                  </Text>
+                ) : null}
                 <View style={styles.scoreboardRows}>
                   {inningResults.map((r) => (
                     <View key={r.inning} style={styles.scoreboardRow}>
@@ -618,6 +760,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  settingsLabel: {
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '700',
+  },
   gameTop: {
     gap: 6,
     paddingBottom: 6,
@@ -696,12 +849,25 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   attemptGuess: {
+    flexDirection: 'row',
+    gap: 4,
+    width: 70,
+  },
+  attemptDigit: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#111827',
-    letterSpacing: 2,
     fontVariant: ['tabular-nums'],
-    width: 70,
+    width: 20,
+    textAlign: 'center',
+  },
+  attemptDigitStrike: {
+    color: '#16A34A',
+  },
+  attemptDigitBall: {
+    color: '#CA8A04',
+  },
+  attemptDigitOut: {
+    color: '#9CA3AF',
   },
   attemptScore: {
     flex: 1,
@@ -731,6 +897,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#111827',
     borderColor: '#111827',
   },
+  keyButtonUsed: {
+    backgroundColor: '#F3F4F6',
+    borderColor: '#E5E7EB',
+  },
+  keyButtonDisabled: {
+    opacity: 0.45,
+  },
   keyButtonText: {
     fontSize: 18,
     fontWeight: '900',
@@ -738,6 +911,12 @@ const styles = StyleSheet.create({
   },
   keyButtonTextAction: {
     color: '#FFFFFF',
+  },
+  keyButtonTextUsed: {
+    color: '#9CA3AF',
+  },
+  keyButtonTextDisabled: {
+    color: '#9CA3AF',
   },
   modalBackdrop: {
     flex: 1,

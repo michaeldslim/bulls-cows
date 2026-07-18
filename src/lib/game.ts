@@ -1,4 +1,4 @@
-import type { IScore } from '../../types';
+import type { DigitResult, IScore } from '../../types';
 
 export const DIGIT_COUNT = 3 as const;
 
@@ -25,6 +25,19 @@ export function isValidGuessDigits(digits: number[]): boolean {
   }
 
   return true;
+}
+
+export function classifyGuessDigits(secret: number[], guess: number[]): DigitResult[] {
+  if (secret.length !== DIGIT_COUNT || guess.length !== DIGIT_COUNT) {
+    throw new Error('Secret and guess must both be 3 digits.');
+  }
+
+  const secretSet = new Set(secret);
+  return guess.map((digit, index) => {
+    if (digit === secret[index]) return 'strike';
+    if (secretSet.has(digit)) return 'ball';
+    return 'out';
+  });
 }
 
 export function scoreGuess(secret: number[], guess: number[]): IScore {
