@@ -11,9 +11,10 @@ Use this plan when adding features or refactoring. Prioritize small, shippable s
 
 - **Stack**: Expo SDK 55, React Native, TypeScript
 - **Game model**: 9 innings, 3 outs per inning, 3-digit unique secret, baseball-themed scoring
-- **Core logic**: `src/lib/game.ts`, state in `src/hooks/useGame.ts`
-- **UI**: Monolithic `App.tsx` (~900 lines, inline components + styles)
-- **Docs drift**: `README.md` still describes a 10-attempt limit (outdated)
+- **Core logic**: `src/lib/game.ts`, `src/lib/inning.ts`, state in `src/hooks/useGame.ts`
+- **UI**: `src/screens/`, `src/components/`, `src/theme/`
+- **Stats**: `src/hooks/useStats.ts`, persisted via AsyncStorage
+- **i18n**: `src/i18n/` (KO default, EN), `react-i18next` + AsyncStorage language pref
 
 ---
 
@@ -39,19 +40,25 @@ Use this plan when adding features or refactoring. Prioritize small, shippable s
 
 ### Logic
 
-- [ ] **Unit tests for `game.ts`** — cover `scoreGuess`, `isValidGuessDigits`, `generateSecretDigits` (uniqueness, range, edge cases like all-outs guess).
-- [ ] **Extract pure inning reducer** — move inning transitions (`submitGuess` outcome → next state) into testable functions in `src/lib/game.ts` or `src/lib/inning.ts`.
-- [ ] **High-score / stats persistence** — best run total, perfect games count, average attempts per scored inning.
-- [ ] **Undo last guess (optional)** — allow one undo per inning before next submit; clears last attempt and recalculates outs.
+- [x] **Unit tests for `game.ts`** — cover `scoreGuess`, `isValidGuessDigits`, `generateSecretDigits` (uniqueness, range, edge cases like all-outs guess).
+- [x] **Extract pure inning reducer** — move inning transitions (`submitGuess` outcome → next state) into testable functions in `src/lib/game.ts` or `src/lib/inning.ts`.
+- [x] **High-score / stats persistence** — best run total, perfect games count, average attempts per scored inning.
+- [x] **Undo last guess (optional)** — allow one undo per inning before next submit; clears last attempt and recalculates outs.
 
 ### UI / Architecture
 
-- [ ] **Split `App.tsx`** into:
+- [x] **Split `App.tsx`** into:
   - `src/screens/HomeScreen.tsx`
   - `src/screens/GameScreen.tsx`
   - `src/components/` — `Pill`, `Keypad`, `GuessBoxes`, `AttemptRow`, `InningScoreboard`, `GameModal`
   - `src/theme/` — shared colors, spacing, typography (replace magic hex values)
-- [ ] **Remove dead code** — unused `playOneShot` in `useSound.ts`, unused styles (`hero`, `howtoContent`, `secretHintArea`, etc.).
+- [x] **Remove dead code** — unused `playOneShot` in `useSound.ts`, unused styles (`hero`, `howtoContent`, `secretHintArea`, etc.).
+
+### i18n & Settings UI
+
+- [x] **KO/EN i18n** — full app copy in `src/i18n/locales/`; default language KO.
+- [x] **Language chip picker** — KO / EN chip buttons in Settings card (`LanguageSettingsRow`).
+- [x] **Standard switch rows** — sound effect and haptic feedback use label + switch only (no Off/On flanking labels).
 
 ---
 
@@ -91,6 +98,7 @@ Use this plan when adding features or refactoring. Prioritize small, shippable s
 | Session / inning state | `src/hooks/useGame.ts` |
 | Audio | `src/hooks/useSound.ts` |
 | Screens & components | `src/screens/`, `src/components/` |
+| i18n | `src/i18n/` |
 | Tunables | `src/constants/game.ts` |
 
 ### Conventions
@@ -98,10 +106,10 @@ Use this plan when adding features or refactoring. Prioritize small, shippable s
 - Keep baseball metaphor in copy (innings, runs, outs, strikes, balls).
 - Prefer haptics + inline feedback over blocking `Alert` dialogs for validation.
 - Match existing visual language: rounded cards, pill badges, blue primary / green success / red outs.
-- Minimize scope per PR — one phase item or a small cluster (e.g. keypad disable + used-digit styling).
+- Settings: language = chip group (KO/EN); boolean prefs = label + native `Switch`.
 
 ---
 
 ## Suggested Next Task
 
-Start with **Phase 1**: disable Enter when incomplete, gray used keypad digits, per-digit attempt coloring, and README sync. These improve feel without architectural churn.
+Start with **Phase 3**: accessibility labels, dark mode theme tokens, and attempt-list animations.

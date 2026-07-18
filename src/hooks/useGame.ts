@@ -1,23 +1,25 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 
-import type { IAttempt, IInningResult, ISettings } from '../../types';
+import type { IInningResult, ISettings } from '../../types';
 import {
-  classifyGuessDigits,
   DIGIT_COUNT,
   digitsToString,
   generateSecretDigits,
   isValidGuessDigits,
   makeId,
-  scoreGuess,
 } from '../lib/game';
-import { TOTAL_INNINGS, OUTS_PER_INNING } from '../constants/game';
+import { computeOutsThisInning, submitGuessReducer, undoLastAttempt } from '../lib/inning';
 import { useSound } from './useSound';
 
-export function useGame(settings: ISettings) {
+interface UseGameOptions {
+  onGameComplete?: (results: IInningResult[]) => void;
+}
+
+export function useGame(settings: ISettings, options?: UseGameOptions) {
   const [secret, setSecret] = useState<number[]>(() => generateSecretDigits());
   const [currentGuess, setCurrentGuess] = useState<number[]>([]);
-  const [attempts, setAttempts] = useState<IAttempt[]>([]);
+  const [attempts, setAttempts] = useState<IInningResult['attempts']>([]);
   const [inning, setInning] = useState(1);
   const [inningResults, setInningResults] = useState<IInningResult[]>([]);
   const [inningEndVisible, setInningEndVisible] = useState(false);
@@ -26,17 +28,20 @@ export function useGame(settings: ISettings) {
   const [lastStrikeMask, setLastStrikeMask] = useState<boolean[] | null>(null);
   const [isScoring, setIsScoring] = useState(false);
   const [invalidShakeTrigger, setInvalidShakeTrigger] = useState(0);
+  const [hasUsedUndoThisInning, setHasUsedUndoThisInning] = useState(false);
 
   const { playWinSound, playLoseSound, playCallSequence } = useSound(settings.soundEnabled);
+  const onGameCompleteRef = useRef(options?.onGameComplete);
+  onGameCompleteRef.current = options?.onGameComplete;
 
   const secretPreview = useMemo(() => digitsToString(secret), [secret]);
-
-  const outsThisInning = useMemo(
-    () => attempts.reduce((sum, a) => sum + a.score.outs, 0),
-    [attempts],
-  );
-
+  const outsThisInning = useMemo(() => computeOutsThisInning(attempts), [attempts]);
   const isInputLocked = inningEndVisible || gameEndVisible || isScoring;
+  const canUndo =
+    !isInputLocked &&
+    !hasUsedUndoThisInning &&
+    currentGuess.length === 0 &&
+    attempts.length > 0;
 
   function triggerErrorHaptic() {
     if (!settings.hapticsEnabled) return;
@@ -63,6 +68,11 @@ export function useGame(settings: ISettings) {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
   }
 
+  function finishGame(newInningResults: IInningResult[]) {
+    setGameEndVisible(true);
+    queueMicrotask(() => onGameCompleteRef.current?.(newInningResults));
+  }
+
   function resetFullGame() {
     setSecret(generateSecretDigits());
     setCurrentGuess([]);
@@ -75,6 +85,7 @@ export function useGame(settings: ISettings) {
     setLastStrikeMask(null);
     setIsScoring(false);
     setInvalidShakeTrigger(0);
+    setHasUsedUndoThisInning(false);
   }
 
   function startNextInning() {
@@ -84,6 +95,7 @@ export function useGame(settings: ISettings) {
     setLastStrikeMask(null);
     setInningEndVisible(false);
     setIsScoring(false);
+    setHasUsedUndoThisInning(false);
     setInning((prev) => prev + 1);
   }
 
@@ -103,6 +115,18 @@ export function useGame(settings: ISettings) {
     setCurrentGuess((prev) => prev.slice(0, -1));
   }
 
+  function undoLastAttemptAction() {
+    if (!canUndo) return;
+
+    const result = undoLastAttempt(attempts);
+    if (!result) return;
+
+    triggerSelectionHaptic();
+    setAttempts(result.newAttempts);
+    setLastStrikeMask(null);
+    setHasUsedUndoThisInning(true);
+  }
+
   function submitGuess() {
     if (isInputLocked) return;
 
@@ -114,43 +138,55 @@ export function useGame(settings: ISettings) {
 
     triggerImpactHaptic();
 
-    const score = scoreGuess(secret, currentGuess);
-    const digitResults = classifyGuessDigits(secret, currentGuess);
-    setLastStrikeMask(currentGuess.map((d, i) => d === secret[i]));
-    const attempt: IAttempt = { id: makeId(), guess: currentGuess, score, digitResults };
-    const newAttempts = [attempt, ...attempts];
-    setAttempts(newAttempts);
+    const submitResult = submitGuessReducer({
+      inning,
+      attempts,
+      outsThisInning,
+      guess: currentGuess,
+      secret,
+      attemptId: makeId(),
+    });
+
+    setLastStrikeMask(submitResult.lastStrikeMask);
+    setAttempts(submitResult.newAttempts);
     setCurrentGuess([]);
+    setHasUsedUndoThisInning(false);
 
-    const newOuts = outsThisInning + score.outs;
-    const inningOver = newOuts >= OUTS_PER_INNING;
-
+    const { score } = submitResult.attempt;
     setIsScoring(true);
 
-    if (score.strikes === DIGIT_COUNT) {
+    if (submitResult.outcome === 'run_scored') {
       void playCallSequence(score.strikes, score.balls, score.outs).finally(() => setIsScoring(false));
       triggerSuccessHaptic();
       void playWinSound();
       setLastInningScored(true);
-      const result: IInningResult = { inning, scored: true, attempts: newAttempts };
-      setInningResults((prev) => [...prev, result]);
-      if (inning >= TOTAL_INNINGS) {
-        setGameEndVisible(true);
+
+      const newInningResults = submitResult.inningResult
+        ? [...inningResults, submitResult.inningResult]
+        : inningResults;
+      setInningResults(newInningResults);
+
+      if (submitResult.showGameEnd) {
+        finishGame(newInningResults);
       } else {
         setInningEndVisible(true);
       }
       return;
     }
 
-    if (inningOver) {
+    if (submitResult.outcome === 'inning_over') {
       triggerWarningHaptic();
       setLastInningScored(false);
-      const result: IInningResult = { inning, scored: false, attempts: newAttempts };
-      setInningResults((prev) => [...prev, result]);
+
+      const newInningResults = submitResult.inningResult
+        ? [...inningResults, submitResult.inningResult]
+        : inningResults;
+      setInningResults(newInningResults);
+
       playCallSequence(score.strikes, score.balls, score.outs).then(() => {
         void playLoseSound();
-        if (inning >= TOTAL_INNINGS) {
-          setGameEndVisible(true);
+        if (submitResult.showGameEnd) {
+          finishGame(newInningResults);
         } else {
           setInningEndVisible(true);
         }
@@ -174,10 +210,12 @@ export function useGame(settings: ISettings) {
     lastStrikeMask,
     isInputLocked,
     invalidShakeTrigger,
+    canUndo,
     resetFullGame,
     startNextInning,
     pushDigit,
     popDigit,
     submitGuess,
+    undoLastAttempt: undoLastAttemptAction,
   };
 }

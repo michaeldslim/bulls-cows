@@ -48,25 +48,6 @@ async function playOnce(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function playOneShot(source: unknown): Promise<void> {
-  return new Promise((resolve) => {
-    Audio.Sound.createAsync(source, { shouldPlay: false })
-      .then(({ sound }) => {
-        void sound.setRateAsync(1.5, true);
-        void sound.playAsync();
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (!status.isLoaded) return;
-          if (status.didJustFinish) {
-            void sound.unloadAsync();
-            resolve();
-          }
-        });
-      })
-      .catch(() => resolve());
-  });
-}
-
 export function useSound(enabled: boolean) {
   const winSoundRef = useRef<Audio.Sound | null>(null);
   const loseSoundRef = useRef<Audio.Sound | null>(null);

@@ -2,12 +2,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { ISettings } from '../../types';
+import i18n from '../i18n';
 
 const SETTINGS_KEY = 'bulls-cows-settings';
 
 const DEFAULT_SETTINGS: ISettings = {
   soundEnabled: true,
   hapticsEnabled: true,
+  language: 'ko',
 };
 
 export function useSettings() {
@@ -27,6 +29,11 @@ export function useSettings() {
       setLoaded(true);
     });
   }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    void i18n.changeLanguage(settings.language);
+  }, [loaded, settings.language]);
 
   const updateSettings = useCallback((patch: Partial<ISettings>) => {
     setSettings((prev) => {

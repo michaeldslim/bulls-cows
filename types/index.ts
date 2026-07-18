@@ -13,13 +13,24 @@ export interface IAttempt {
   digitResults: DigitResult[];
 }
 
+export type AppLanguage = 'en' | 'ko';
+
 export interface ISettings {
   soundEnabled: boolean;
   hapticsEnabled: boolean;
+  language: AppLanguage;
 }
 
 export interface IInningResult {
   inning: number;
   scored: boolean;
   attempts: IAttempt[];
+}
+
+export interface IStats {
+  bestRuns: number;
+  perfectGames: number;
+  gamesPlayed: number;
+  totalAttemptsOnScoredInnings: number;
+  scoredInnings: number;
 }
