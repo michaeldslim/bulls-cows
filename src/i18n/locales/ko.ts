@@ -61,6 +61,7 @@ export const ko: TranslationSchema = {
     digits4: '4',
     innings6: '6',
     innings9: '9',
+    version: 'v{{version}}',
   },
   game: {
     restart: '다시 시작',

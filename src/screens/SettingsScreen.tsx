@@ -1,6 +1,8 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import appConfig from '../../app.json';
+
 import type { DigitCount, GameInnings, ISettings } from '../../types';
 import { LanguageSettingsRow, SettingsChipRow, SettingsRow } from '../components/SettingsRow';
 import { ScreenHeader } from '../components/ScreenHeader';
@@ -21,6 +23,7 @@ export function SettingsScreen({
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = createStyles(colors);
+  const appVersion = appConfig.expo.version;
 
   return (
     <View style={styles.screen}>
@@ -69,6 +72,12 @@ export function SettingsScreen({
             }}
           />
         </View>
+
+        {appVersion ? (
+          <Text style={styles.version}>
+            {t('settings.version', { version: appVersion })}
+          </Text>
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -98,6 +107,12 @@ function createStyles(colors: ReturnType<typeof useTheme>['colors']) {
       borderWidth: 1,
       borderColor: colors.border,
       gap: spacing.sm,
+    },
+    version: {
+      marginTop: spacing.sm,
+      textAlign: 'center',
+      fontSize: 13,
+      color: colors.textFaint,
     },
   });
 }
